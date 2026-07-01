@@ -1,0 +1,37 @@
+/* Remove ugly default styles */
+.react-calendar {
+  width: 100%;
+  background: transparent;
+  border: none;
+  font-family: inherit;
+}
+
+.react-calendar__navigation {
+  display: none;
+}
+
+.react-calendar__month-view__weekdays {
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.react-calendar__tile {
+  padding: 8px 0;
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+
+/* Highlight only event range */
+.range-day {
+  background: #3b82f6 !important; /* icy blue */
+  color: white !important;
+  border-radius: 8px;
+}
+
+/* Remove hover/active effects */
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  background: transparent;
+}

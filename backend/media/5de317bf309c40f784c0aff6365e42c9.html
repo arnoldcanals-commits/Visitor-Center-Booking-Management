@@ -1,0 +1,14 @@
+<h1>Official Bill</h1>
+
+<p>Booking ID: {{ bill.booking.id }}</p>
+<p>Status: {{ bill.status }}</p>
+
+<h3>Charges</h3>
+<ul>
+  <li>Base Amount: {{ bill.base_amount }}</li>
+  {% for fee in bill.fees.all %}
+    <li>{{ fee.name }}: {{ fee.amount }}</li>
+  {% endfor %}
+</ul>
+
+<h3>Total: {{ bill.total_amount }}</h3>

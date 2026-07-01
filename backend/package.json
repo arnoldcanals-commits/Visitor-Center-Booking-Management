@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "browser-image-compression": "^2.0.2",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.562.0",
+    "react-leaflet": "^5.0.0",
+    "react-rnd": "^10.5.2",
+    "yet-another-react-lightbox": "^3.26.0"
+  }
+}

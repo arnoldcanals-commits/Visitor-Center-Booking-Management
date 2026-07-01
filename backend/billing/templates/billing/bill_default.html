@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Official Bill</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      line-height: 1.4;
+      color: #000;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin: 0;
+    }
+
+    .header p {
+      margin: 2px 0;
+      font-size: 14px;
+    }
+
+    h3 {
+      margin-top: 20px;
+      margin-bottom: 5px;
+      font-size: 18px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 3px;
+    }
+
+    ul {
+      list-style-type: disc;
+      margin-left: 20px;
+    }
+
+    p, li {
+      font-size: 14px;
+      margin: 3px 0;
+    }
+
+    h2 {
+      text-align: right;
+      font-size: 20px;
+      margin-top: 15px;
+    }
+
+    hr {
+      margin: 20px 0;
+      border: 0;
+      border-top: 1px dashed #999;
+    }
+
+    .payment {
+      margin-top: 15px;
+    }
+
+    .qr {
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      margin-top: 25px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <h1>Sablayan Visitor Center</h1>
+    <p>Poblacion, Sablayan, Occidental Mindoro</p>
+    <p>Email: sbvc@gmail.com</p>
+  </div>
+
+  <h1>Official Bill</h1>
+
+  <p><strong>Bill #:</strong> {{ bill_number }}</p>
+  <p><strong>Status:</strong> {{ status }}</p>
+  <p><strong>Date Issued:</strong> {{ issued_at }}</p>
+
+  <h3>Guests</h3>
+  <ul>
+    {% for guest in guests %}
+      <li>{{ guest.full_name }}</li>
+    {% endfor %}
+  </ul>
+
+  <h3>Charges</h3>
+  <ul>
+    {% for item in items %}
+      <li>{{ item.description }} – {{ item.final_amount }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Total: {{ total_amount }}</h2>
+
+  <hr>
+
+  <div class="payment">
+    <h3>Payment</h3>
+    <p>
+      <strong>Payment Method:</strong> GCash<br>
+      <strong>Amount Due:</strong> ₱{{ total_amount }}
+    </p>
+
+    {% if payment.qr_code %}
+      <div class="qr">
+        <p><strong>Scan to Pay via GCash</strong></p>
+        <img
+          src="file://{{ payment.qr_code.path }}"
+          alt="GCash QR Code"
+          width="180"
+        />
+        <p style="font-size: 11px; margin-top: 6px;">
+          Use the GCash app to scan this QR code.<br>
+          Reference No: {{ bill_number }}
+        </p>
+      </div>
+    {% else %}
+      <p><em>GCash QR code not available.</em></p>
+    {% endif %}
+  </div>
+
+  <hr>
+
+  <div class="footer">
+    Thank you for visiting Sablayan Visitor Center!
+  </div>
+
+</body>
+</html>

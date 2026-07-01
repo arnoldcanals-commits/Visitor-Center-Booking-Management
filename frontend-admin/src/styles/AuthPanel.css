@@ -1,0 +1,236 @@
+/* ===============================
+   Layout Container
+================================*/
+.auth-panel-root {
+  position: relative;
+  width: 100%;
+  max-width: 520px;        /* ✅ wider on desktop (420 → 520) */
+  margin: 60px auto;
+  padding: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 0;
+}
+
+/* ===============================
+   Frosted Glass Card
+================================*/
+.glass-card {
+  position: relative;
+  width: 100%;
+  padding: 28px;
+  border-radius: 18px;
+  overflow: hidden;
+
+  background: none;
+
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 30px rgba(0, 50, 60, 0.35);
+
+  z-index: 10;
+}
+
+/* Gradient */
+.glass-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: -1;
+
+  background: linear-gradient(
+    to top,
+    rgb(0, 74, 90) 0%,
+    rgb(0, 45, 55) 10%,
+    rgba(0, 105, 100, 0.65) 40%,
+    rgba(0, 105, 100, 0.267) 90%,
+    rgba(0, 165, 157, 0.075) 100%
+  );
+
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+
+/* card contents */
+.glass-card * {
+  position: relative;
+  z-index: 20;
+}
+
+/* ===============================
+   Title
+================================*/
+.auth-title {
+  margin-bottom: 14px;
+  font-weight: 600;
+  font-size: 1.2rem;
+  color: #e8fbff;
+}
+
+/* ===============================
+   Toggle Buttons
+================================*/
+.auth-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+
+  margin: 5px auto;
+  padding: 5px;
+  border-radius: 8px;
+
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+
+  max-width: 480px; /* ✅ matches wider panel */
+  width: 100%;
+
+  background-color: #e8fbff;
+}
+
+/* ✅ Both buttons same size now */
+.auth-toggle button {
+  flex: 1;                     /* ✅ equal width */
+  padding: 12px 0;             /* ✅ nicer height */
+  margin: 10px 6px;            /* ✅ tighter spacing */
+
+  background-color: #007bff;
+  color: white;
+
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: background-color 0.25s ease, transform 0.1s ease;
+
+  backdrop-filter: blur(4px);
+}
+
+.auth-toggle button:hover {
+  background: rgba(0, 180, 200, 0.35);
+}
+
+.auth-toggle button.active {
+  background: rgba(0, 220, 240, 0.55);
+  color: #ffffff;
+}
+
+/* ===============================
+   Form Slot
+================================*/
+.form-slot {
+  margin-top: 8px;
+  width: 100%;
+  position: relative;
+  z-index: 25;
+}
+
+/* ===============================
+   Dust Layer
+================================*/
+.dust-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 16;
+}
+
+.dust-particle {
+  position: absolute;
+  bottom: 6%;
+
+  background: rgba(0, 45, 55, 0.85);
+  border-radius: 50%;
+
+  animation-name: dust-rise;
+  animation-timing-function: cubic-bezier(0.15, 0.7, 0.25, 1);
+  animation-iteration-count: infinite;
+
+  z-index: 15;
+}
+
+.dust-particle::after {
+  content: "";
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  filter: blur(2px);
+}
+
+/* animation */
+@keyframes dust-rise {
+  0% {
+    transform: translateY(0) scale(0.9);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.75;
+  }
+  60% {
+    transform: translateY(-180px) scale(1.05);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(-260px) scale(1.06);
+    opacity: 0;
+  }
+}
+
+/* ===============================
+   Fullscreen overlay
+================================*/
+.auth-overlay {
+  position: fixed;        /* ✅ sits on top of the home page */
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);  /* ✅ soft dark backdrop */
+  backdrop-filter: blur(4px);      /* ✅ layered look */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;           /* ✅ above everything */
+}
+
+/* ===============================
+   Panel fixes for layering & mobile
+================================*/
+.auth-panel-root {
+  position: relative;
+  max-width: 560px;       /* ✅ a bit wider (520 → 560) */
+  width: 95%;             /* ✅ mobile friendliness */
+  margin: 0;              /* ✅ rely on overlay centering */
+  padding: 10px;
+  z-index: 1000;          /* ✅ above overlay behind it */
+}
+
+/* on small screens — tighten spacing */
+@media (max-width: 480px) {
+  .glass-card {
+    padding: 20px;
+  }
+  .auth-toggle button {
+    margin: 6px 4px;
+    padding: 10px 0;
+  }
+}
+
+/* ===============================
+   Close button fix
+================================*/
+.auth-close-btn {
+  position: absolute;
+  top: -18px;
+  right: -18px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  padding: 6px 10px;
+  border-radius: 50%;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  color: white;
+  font-size: 16px;
+  z-index: 1200;
+}
