@@ -39,6 +39,9 @@ export default function PackageCard({ pkg }) {
       className="
         relative
         w-full
+        h-full
+        flex
+        flex-col
         rounded-2xl
         overflow-hidden
         shadow-md
@@ -71,19 +74,30 @@ export default function PackageCard({ pkg }) {
         "
       />
 
-      {/* Image */}
-      <img
-        src={imageUrl}
-        alt={pkg.name}
-        className="w-full h-48 object-cover"
-      />
+      {/* Image — fixed aspect ratio box, crops any source size consistently.
+          aspect-[4/3] scales with card width but keeps ratio locked so
+          the image block is always the same shape regardless of the
+          original picture's dimensions. */}
+      <div className="w-full aspect-[4/3] overflow-hidden flex-shrink-0">
+        <img
+          src={imageUrl}
+          alt={pkg.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
 
-      {/* Content */}
-      <div className="p-4 relative">
-        <h3 className="text-lg font-semibold">{pkg.name}</h3>★{pkg.average_rating}
-        <p className="text-gray-600 text-sm mt-1">{pkg.short_description}</p>
+      {/* Content — flex-1 makes this fill remaining card height,
+          and justify-between pins price/button to the bottom
+          regardless of how long the title/description are. */}
+      <div className="p-4 relative flex flex-col flex-1">
+        <h3 className="text-lg font-semibold line-clamp-1">
+          {pkg.name} ★{pkg.average_rating}
+        </h3>
+        <p className="text-gray-600 text-sm mt-1 line-clamp-2 min-h-[2.5rem]">
+          {pkg.short_description}
+        </p>
 
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between mt-4 pt-2 flex-1 items-end">
           <span className="text-xl font-bold">₱{pkg.base_price}</span>
 
           <button

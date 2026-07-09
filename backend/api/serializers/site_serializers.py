@@ -12,6 +12,8 @@ class SiteConfigurationSerializer(serializers.ModelSerializer):
             'twitter_url', 
             'facebook_url', 
             'instagram_url', 
+            'youtube_url',
+            'tiktok_url',
             'contact_email'
         ]
 

@@ -7,6 +7,9 @@ import PaymentMethodSelector from "../../components/PaymentMethodSelector";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import "./calendar.css";
+import GuestManagement from "../Guests";
+
+
 
 /* =======================
    Date helpers
@@ -24,6 +27,7 @@ const endOfDay = (date) => {
 };
 
 export default function BookingPage() {
+  const [showGuests, setShowGuests] = useState(false);
   const { id } = useParams();
   const navigate = useNavigate();
 
@@ -128,6 +132,8 @@ export default function BookingPage() {
     length: totalSlots - userGuests.length,
   });
 
+  
+
   return (
     <div style={{ fontFamily: "'Poppins', sans-serif" }}>
       <link
@@ -145,12 +151,29 @@ export default function BookingPage() {
             Return
           </button>
 
-          <Link
-            to="/profile"
-            className="bg-amber-400 text-white px-4 py-2 rounded-lg font-semibold hover:bg-amber-700 transition-colors"
-          >
-            Edit Guest List
-          </Link>
+          <div>
+      <button
+        onClick={() => setShowGuests(true)}
+        className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white rounded-lg shadow transition"
+      >
+        Manage Guests
+      </button>
+
+        {showGuests && (
+          <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/30 backdrop-blur-sm p-4 pt-20 overflow-y-auto">
+            <div className="bg-gray-50 rounded-2xl shadow-xl w-full max-w-6xl relative mb-8">
+              <button
+                onClick={() => setShowGuests(false)}
+                className="absolute top-3 right-3 z-10 h-8 w-8 flex items-center justify-center rounded-full bg-white shadow hover:bg-gray-100 transition"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+              <GuestManagement />
+          </div>
+        </div>
+      )}
+    </div>
         </div>
 
         <h1 className="text-2xl font-bold text-gray-100 mb-6 bg-slate-500 rounded-lg p-2">

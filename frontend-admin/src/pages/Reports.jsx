@@ -1,58 +1,93 @@
 import React, { useState, useContext, useMemo } from 'react';
 import { AdminDataContext } from '../contexts/AdminDataContext';
 import { AdminBillingContext } from '../contexts/AdminBillingContext';
-import { 
+import {
   Printer, Save, History, Archive, Trash2, Calendar, Settings2, Filter, FileSpreadsheet, FileText
 } from 'lucide-react';
 import "../Styles/Reports.css";
+
+// Safely pull the YYYY-MM-DD portion out of an ISO timestamp without throwing
+// if the value is missing.
+const safeDatePart = (isoString) => {
+  if (!isoString || typeof isoString !== 'string') return '';
+  return isoString.split('T')[0];
+};
+
+// Escapes a single CSV field: wraps in quotes and doubles any internal quotes
+// whenever the value contains a comma, quote, or newline.
+const csvEscape = (value) => {
+  const str = value === null || value === undefined ? '' : String(value);
+  if (/[",\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+};
 
 const Reports = () => {
   const { filteredData, createItem, updateItem, deleteItem } = useContext(AdminDataContext);
   const { bills } = useContext(AdminBillingContext);
 
-  const [reportType, setReportType] = useState('booking'); 
+  const [reportType, setReportType] = useState('booking');
   const [showHistory, setShowHistory] = useState(false);
   const [showArchived, setShowArchived] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [reportNote, setReportNote] = useState('');
   const [statusTab, setStatusTab] = useState('all');
-  const [filterLevel, setFilterLevel] = useState('day'); 
-  const [dateFilter, setDateFilter] = useState(''); 
+  const [filterLevel, setFilterLevel] = useState('day');
+  const [dateFilter, setDateFilter] = useState('');
 
-  const validBills = useMemo(() => 
+  const validBills = useMemo(() =>
     bills.filter(b => ['issued', 'paid', 'verified'].includes(b.status)), [bills]);
 
-  const bookingReport = useMemo(() => {
+  // Filtered by date ONLY. This is the source of truth for the summary
+  // totals so switching the status tab doesn't hide revenue from the totals.
+  const dateFilteredBookings = useMemo(() => {
     return (filteredData.bookings || [])
       .map(booking => {
         const bill = validBills.find(b => b.booking === booking.id);
-        if (!bill) return null; 
+        if (!bill) return null;
         return {
           ...booking,
           billRef: bill.id,
           billStatus: bill.status === 'verified' ? 'paid' : bill.status,
           total: parseFloat(bill.total_amount) || 0,
-          billDate: bill.created_at.split('T')[0]
+          billDate: safeDatePart(bill.created_at)
         };
       })
-      .filter(b => b && (!dateFilter || b.billDate.startsWith(dateFilter)))
-      .filter(b => statusTab === 'all' || b.billStatus === statusTab);
-  }, [filteredData.bookings, validBills, dateFilter, statusTab]);
+      .filter(b => b && (!dateFilter || (b.billDate && b.billDate.startsWith(dateFilter))));
+  }, [filteredData.bookings, validBills, dateFilter]);
+
+  // Additionally filtered by the active status tab. Used for the table rows
+  // and the subtotal row underneath them, NOT for the summary totals above.
+  const bookingReport = useMemo(() => {
+    return dateFilteredBookings.filter(b => statusTab === 'all' || b.billStatus === statusTab);
+  }, [dateFilteredBookings, statusTab]);
 
   const stationReport = useMemo(() => {
     const stationMap = {};
     (filteredData.event_station_guest_checks || []).forEach(check => {
-      const checkDate = check.checked_at.split('T')[0];
+      const checkDate = safeDatePart(check.checked_at);
       if (dateFilter && !checkDate.startsWith(dateFilter)) return;
 
-      const sName = check.station_name;
+      const sName = check.station_name || 'Unknown Station';
       if (!stationMap[sName]) {
-        stationMap[sName] = { name: sName, count: 0, male: 0, female: 0, local: 0, intl: 0, ageSum: 0 };
+        stationMap[sName] = {
+          name: sName, count: 0, male: 0, female: 0, genderUnspecified: 0,
+          local: 0, intl: 0, originUnspecified: 0, ageSum: 0
+        };
       }
       const s = stationMap[sName];
       s.count++;
-      check.gender?.toLowerCase() === 'male' ? s.male++ : s.female++;
-      check.is_local ? s.local++ : s.intl++;
+
+      const gender = check.gender?.toLowerCase();
+      if (gender === 'male') s.male++;
+      else if (gender === 'female') s.female++;
+      else s.genderUnspecified++;
+
+      if (check.is_local === true) s.local++;
+      else if (check.is_local === false) s.intl++;
+      else s.originUnspecified++;
+
       s.ageSum += (check.age || 0);
     });
     return Object.values(stationMap);
@@ -67,37 +102,58 @@ const Reports = () => {
   const handleSaveReport = async () => {
     const dataToSave = reportType === 'booking' ? bookingReport : stationReport;
     const reportName = `${reportType.toUpperCase()} (${dateFilter || 'All Time'})`;
-    const success = await createItem('reports', {
-      title: reportName,
-      data_snapshot: dataToSave,
-      is_archived: false,
-      created_at: new Date().toISOString()
-    });
-    if (success) alert("Audit saved to history.");
+    try {
+      const success = await createItem('reports', {
+        title: reportName,
+        data_snapshot: dataToSave,
+        is_archived: false,
+        created_at: new Date().toISOString()
+      });
+      if (success) {
+        alert("Audit saved to history.");
+      } else {
+        alert("Could not save the report. Please try again.");
+      }
+    } catch (err) {
+      console.error('Failed to save report:', err);
+      alert("Could not save the report. Please try again.");
+    }
   };
 
   const downloadSpreadsheet = () => {
     const data = reportType === 'booking' ? bookingReport : stationReport;
     if (!data.length) return alert("No data to export");
-    const headers = reportType === 'booking' 
+    const headers = reportType === 'booking'
       ? ["Date", "Ref #", "Tourist", "Status", "Revenue"]
       : ["Station", "Total Hits", "M/F Split", "L/I Split", "Avg Age"];
-    const rows = data.map(item => reportType === 'booking' 
+    const rows = data.map(item => reportType === 'booking'
       ? [item.billDate, item.billRef, item.tourist_name, item.billStatus, item.total]
-      : [item.name, item.count, `${item.male}/${item.female}`, `${item.local}/${item.intl}`, Math.round(item.ageSum / item.count)]);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+      : [item.name, item.count, `${item.male}/${item.female}`, `${item.local}/${item.intl}`, item.count ? Math.round(item.ageSum / item.count) : 0]);
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(csvEscape).join(","))
+      .join("\n");
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
     link.download = `Report_${reportType}_${dateFilter || 'all'}.csv`;
+    document.body.appendChild(link);
     link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
 
   const handleFinalPrint = () => {
     setIsPrintModalOpen(false);
     setTimeout(() => window.print(), 300);
   };
+
+  const realizedTotal = dateFilteredBookings
+    .filter(r => r.billStatus === 'paid')
+    .reduce((s, r) => s + r.total, 0);
+  const receivableTotal = dateFilteredBookings
+    .filter(r => r.billStatus === 'issued')
+    .reduce((s, r) => s + r.total, 0);
 
   return (
     <div className="reports-page-wrapper">
@@ -158,8 +214,8 @@ const Reports = () => {
               ))}
             </div>
             <div className="flex gap-6">
-               <div className="text-right"><span className="block text-[9px] font-black text-gray-400 uppercase">Realized</span><span className="text-lg font-black text-green-600 tabular-nums">${bookingReport.filter(r => r.billStatus === 'paid').reduce((s, r) => s + r.total, 0).toLocaleString()}</span></div>
-               <div className="text-right"><span className="block text-[9px] font-black text-gray-400 uppercase">Receivable</span><span className="text-lg font-black text-blue-600 tabular-nums">${bookingReport.filter(r => r.billStatus === 'issued').reduce((s, r) => s + r.total, 0).toLocaleString()}</span></div>
+               <div className="text-right"><span className="block text-[9px] font-black text-gray-400 uppercase">Realized</span><span className="text-lg font-black text-green-600 tabular-nums">${realizedTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+               <div className="text-right"><span className="block text-[9px] font-black text-gray-400 uppercase">Receivable</span><span className="text-lg font-black text-blue-600 tabular-nums">${receivableTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
             </div>
           </div>
         )}
@@ -176,8 +232,8 @@ const Reports = () => {
             <tbody className="divide-y divide-gray-100">
               {reportType === 'booking' ? (
                 <>
-                  {bookingReport.map((row, i) => (
-                    <tr key={i} className="hover:bg-blue-50/30">
+                  {bookingReport.map((row) => (
+                    <tr key={row.billRef ?? `${row.id}-${row.billDate}`} className="hover:bg-blue-50/30">
                       <td className="p-4 text-gray-400 font-bold tabular-nums">{row.billDate}</td>
                       <td className="p-4 font-mono font-bold text-blue-600 text-xs">#{row.billRef}</td>
                       <td className="p-4 font-bold text-gray-800">{row.tourist_name}</td>
@@ -191,13 +247,19 @@ const Reports = () => {
                   </tr>
                 </>
               ) : (
-                stationReport.map((row, i) => (
-                  <tr key={i} className="hover:bg-purple-50/30">
+                stationReport.map((row) => (
+                  <tr key={row.name} className="hover:bg-purple-50/30">
                     <td className="p-4 font-black text-gray-800">{row.name}</td>
                     <td className="p-4 font-bold text-purple-600">{row.count} Checks</td>
-                    <td className="p-4 text-xs text-gray-500">{row.male}M / {row.female}F</td>
-                    <td className="p-4 text-xs text-gray-500">{row.local}L / {row.intl}I</td>
-                    <td className="p-4 text-right font-black">{Math.round(row.ageSum / row.count) || 0} yrs</td>
+                    <td className="p-4 text-xs text-gray-500">
+                      {row.male}M / {row.female}F
+                      {row.genderUnspecified > 0 && <span className="text-gray-300"> ({row.genderUnspecified} unspecified)</span>}
+                    </td>
+                    <td className="p-4 text-xs text-gray-500">
+                      {row.local}L / {row.intl}I
+                      {row.originUnspecified > 0 && <span className="text-gray-300"> ({row.originUnspecified} unspecified)</span>}
+                    </td>
+                    <td className="p-4 text-right font-black">{row.count ? Math.round(row.ageSum / row.count) : 0} yrs</td>
                   </tr>
                 ))
               )}
@@ -238,14 +300,14 @@ const Reports = () => {
             </button>
 
             <div className="download-options">
-                <button 
-                  onClick={downloadSpreadsheet} 
+                <button
+                  onClick={downloadSpreadsheet}
                   className="bg-white border-2 border-gray-100 text-gray-700 px-5 py-3 rounded-2xl shadow-xl hover:bg-gray-50 flex items-center gap-2 text-[10px] font-black uppercase whitespace-nowrap"
                 >
                     <FileSpreadsheet size={16} className="text-green-600"/> Export Excel
                 </button>
-                <button 
-                  onClick={() => setIsPrintModalOpen(true)} 
+                <button
+                  onClick={() => setIsPrintModalOpen(true)}
                   className="bg-white border-2 border-gray-100 text-gray-700 px-5 py-3 rounded-2xl shadow-xl hover:bg-gray-50 flex items-center gap-2 text-[10px] font-black uppercase whitespace-nowrap"
                 >
                     <FileText size={16} className="text-blue-600"/> Export PDF
@@ -253,8 +315,8 @@ const Reports = () => {
             </div>
           </div>
 
-          <button 
-            onClick={handleSaveReport} 
+          <button
+            onClick={handleSaveReport}
             className="bg-purple-600 text-white p-5 rounded-full shadow-2xl hover:scale-110 active:scale-95 transition-all"
             title="Save Audit"
           >

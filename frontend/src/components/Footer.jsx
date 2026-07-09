@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Facebook, Instagram, Mail } from 'lucide-react'; 
+import { Facebook, Instagram, Mail, Youtube, } from 'lucide-react'; 
 import api from "../api";
 import FAQModal from "./FAQModal";
 import ScrollToTop from "./ScrollToTop";
@@ -11,9 +11,22 @@ const XIcon = ({ size = 24, className = "" }) => (
         height={size} 
         viewBox="0 0 24 24" 
         fill="currentColor" 
-        className={className}
+        className={`block ${className}`}
     >
         <path d="M18.901 1.153h3.68l-8.04 9.19L24 22.846h-7.406l-5.8-7.584-6.638 7.584H.474l8.6-9.83L0 1.154h7.594l5.243 6.932ZM17.61 20.644h2.039L6.486 3.24H4.298Z" />
+    </svg>
+);
+
+// Custom TikTok SVG Icon
+const TikTokIcon = ({ size = 24, className = "" }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className={`block ${className}`}
+    >
+        <path d="M16.6 5.82c-.94-.83-1.6-1.98-1.75-3.28h-3.03v13.44c0 1.6-1.3 2.9-2.9 2.9s-2.9-1.3-2.9-2.9 1.3-2.9 2.9-2.9c.3 0 .58.05.85.13V10.1a6.02 6.02 0 0 0-.85-.06 5.94 5.94 0 0 0-5.94 5.94A5.94 5.94 0 0 0 8.92 22 5.94 5.94 0 0 0 14.86 16.1V9.01a9.02 9.02 0 0 0 5.28 1.7V7.68c-1.24 0-2.38-.4-3.31-1.07a5.85 5.85 0 0 1-.23-.79Z"/>
     </svg>
 );
 
@@ -73,23 +86,35 @@ const Footer = () => {
                     {/* Social Media Icons */}
                     <div className="text-center md:text-left">
                         <h3 className="text-lg font-semibold mb-4 uppercase tracking-wider text-gray-500 text-xs">Follow Us</h3>
-                        <div className="flex justify-center md:justify-start gap-6">
+                        <div className="flex items-center justify-center md:justify-start gap-6">
                             {config.facebook_url && (
                                 <a href={config.facebook_url} target="_blank" rel="noreferrer" 
-                                   className="text-gray-400 hover:text-blue-600 transition-all transform hover:-translate-y-1">
-                                    <Facebook size={22} />
+                                   className="flex items-center text-gray-400 hover:text-blue-600 transition-all transform hover:-translate-y-1">
+                                    <Facebook size={22} className="block" />
                                 </a>
                             )}
                             {config.twitter_url && (
                                 <a href={config.twitter_url} target="_blank" rel="noreferrer" 
-                                   className="text-gray-400 hover:text-white transition-all transform hover:-translate-y-1">
+                                   className="flex items-center text-gray-400 hover:text-white transition-all transform hover:-translate-y-1">
                                     <XIcon size={20} />
                                 </a>
                             )}
                             {config.instagram_url && (
                                 <a href={config.instagram_url} target="_blank" rel="noreferrer" 
-                                   className="text-gray-400 hover:text-pink-500 transition-all transform hover:-translate-y-1">
-                                    <Instagram size={22} />
+                                   className="flex items-center text-gray-400 hover:text-pink-500 transition-all transform hover:-translate-y-1">
+                                    <Instagram size={22} className="block" />
+                                </a>
+                            )}
+                            {config.youtube_url && (
+                                <a href={config.youtube_url} target="_blank" rel="noreferrer" 
+                                   className="flex items-center text-gray-400 hover:text-red-700 transition-all transform hover:-translate-y-1">
+                                    <Youtube size={30} className="block" />
+                                </a>
+                            )}
+                            {config.tiktok_url && (
+                                <a href={config.tiktok_url} target="_blank" rel="noreferrer" 
+                                   className="flex items-center text-gray-400 hover:text-teal-700 transition-all transform hover:-translate-y-1">
+                                    <TikTokIcon size={26} />
                                 </a>
                             )}
                         </div>

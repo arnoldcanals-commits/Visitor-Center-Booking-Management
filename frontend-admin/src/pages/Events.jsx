@@ -74,11 +74,13 @@ const Events = () => {
 
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-7xl mx-auto pb-32 relative">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white rounded-xl shadow p-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Calendar className="text-blue-600" /> Event Console
-          </h1>
+   
+           <div className="flex items-center gap-2 p-3 bg-violet-50 text-violet-600 rounded-xl w-fit border border-violet-100">
+               <Calendar size={18} />
+               <span className="text-sm font-black uppercase tracking-tight">Event Management</span>
+            </div>
           <p className="text-sm text-gray-500">
             {filteredEvents.length} events found
           </p>

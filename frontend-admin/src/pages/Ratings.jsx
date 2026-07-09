@@ -102,11 +102,10 @@ const TARGET_COLORS = {
       <div className="max-w-7xl mx-auto">
         <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-yellow-100 text-yellow-600 shadow-sm"><UserCircle size={26} /></div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tight">Review Management</h1>
+            <div className="flex items-center gap-2 p-3 bg-amber-50 text-yellow-600 rounded-xl w-fit border border-purple-100">
+               <UserCircle size={18} />
+               <span className="text-sm font-black uppercase tracking-tight">Ratings Management</span>
             </div>
-            <p className="text-slate-500 font-medium ml-12">Monitor and moderate feedback from your travelers.</p>
           </div>
 
           <button 

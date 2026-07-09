@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
+import Profile from "./components/Profile";
 import Dashboard from "./pages/Dashboard";
 import Users from "./pages/Users";
 import Packages from "./pages/Packages";
@@ -23,7 +24,7 @@ import { AdminBillingProvider } from "./contexts/AdminBillingContext";
 
 import Layout from "./components/Layout";
 
-import "./charts/ChartjsConfig";
+
 import "./css/style.css";
 
 function Logout() {
@@ -57,6 +58,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
+        <Route path="profile" element={<Profile />} />
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="users" element={<Users />} />
         <Route path="packages" element={<Packages />} />

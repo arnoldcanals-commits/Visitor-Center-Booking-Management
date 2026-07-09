@@ -19,37 +19,34 @@ const sections = [
   {
     title: "General",
     links: [
-      { name: "Dashboard", to: "/dashboard", icon: Home, color: "text-teal-500" },
-      { name: "Users", to: "/users", icon: Users, color: "text-indigo-500" },
+      { name: "Dashboard", to: "/dashboard", icon: Home },
+      { name: "Users", to: "/users", icon: Users },
     ],
   },
   {
     title: "Management",
     links: [
-      { name: "Packages", to: "/packages", icon: Clipboard, color: "text-orange-500" },
-      { name: "Events", to: "/events", icon: Calendar, color: "text-purple-500" },
-      { name: "Bookings", to: "/bookings", icon: Ticket, color: "text-green-500" },
-    
+      { name: "Packages", to: "/packages", icon: Clipboard },
+      { name: "Events", to: "/events", icon: Calendar },
+      { name: "Bookings", to: "/bookings", icon: Ticket },
     ],
   },
   {
     title: "Tracking",
-    links: [
-      { name: "Guest Tracking", to: "/tracking", icon: MapPin, color: "text-teal-500" },
-    ],
+    links: [{ name: "Guest Tracking", to: "/tracking", icon: MapPin }],
   },
   {
     title: "Reports",
     links: [
-      { name: "Ratings", to: "/ratings", icon: Star, color: "text-yellow-500" },
-      { name: "Reports", to: "/reports", icon: BarChart2, color: "text-purple-500" },
-      { name: "Billing", to: "/billing", icon: CreditCard, color: "text-red-500" },
-      { name: "System Settings", to: "/systemsetting", icon: Settings, color: "text-gray-700" },
+      { name: "Ratings", to: "/ratings", icon: Star },
+      { name: "Reports", to: "/reports", icon: BarChart2 },
+      { name: "Billing", to: "/billing", icon: CreditCard },
+      { name: "System Settings", to: "/systemsetting", icon: Settings },
     ],
   },
 ];
 
-export default function Sidebar({ userName = "Admin", children }) {
+export default function Sidebar({ userName = "Admin" }) {
   const [open, setOpen] = useState(true); // Desktop open
   const [mobileOpen, setMobileOpen] = useState(false); // Mobile sidebar
   const [mobilePos, setMobilePos] = useState({ x: 20, y: 20 });
@@ -79,24 +76,38 @@ export default function Sidebar({ userName = "Admin", children }) {
   }, [dragging]);
 
   return (
-    <div className="flex h-screen font-inter bg-gray-50">
-      {/* Desktop Sidebar */}
+    <>
+      {/* Desktop Sidebar — normal flex item now, no `fixed`, so Layout's flex row
+          reserves space for it automatically. Width transitions between w-64/w-16. */}
       <aside
-        className={`fixed z-40 h-full bg-white border-r shadow-lg transition-all duration-300 hidden md:flex flex-col ${
+        className={`h-full bg-white border-r shadow-lg transition-all duration-300 hidden md:flex flex-col flex-shrink-0 ${
           open ? "w-64" : "w-16"
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b relative">
-          {open && <span className="text-teal-500 font-bold text-lg">Hello {userName}</span>}
-
-          {/* Desktop toggle */}
-          <button
-            onClick={() => setOpen(!open)}
-            className="absolute -right-4 top-8 bg-teal-500 text-white rounded-full p-2 shadow-lg hover:scale-110 transition-transform duration-300"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
+      <div className="flex items-center p-2 border-b w-full">
+  <button
+    onClick={() => setOpen(!open)}
+    className="group flex items-center justify-end w-full gap-2 p-1 rounded-lg transition-all duration-300 transform hover:translate-x-1 hover:bg-gray-100 text-gray-700"
+  >
+    {/* "Collapse" text: Appears smoothly right next to the icon on hover */}
+    {open && (
+      <span className="truncate opacity-0 group-hover:opacity-100 transition-opacity duration-300 text-sm font-medium text-gray-600">
+        Collapse
+      </span>
+    )}
+    
+    {/* The Icon Wrapper: Only this part gets the purple rounded background when open */}
+    <div
+      className={`flex items-center justify-center p-2 rounded-full transition-all duration-300 ${
+        open 
+          ? "bg-[#8B6FCB] text-white" 
+          : "text-[#B79FDB] group-hover:bg-gray-200"
+      }`}
+    >
+      <Menu className="w-5 h-5 flex-shrink-0" />
+    </div>
+  </button>
+</div>
 
         {/* Scrollable content */}
         <nav className="flex-1 overflow-y-auto p-2 space-y-4">
@@ -115,15 +126,23 @@ export default function Sidebar({ userName = "Admin", children }) {
                       key={link.to}
                       to={link.to}
                       className={({ isActive }) =>
-                        `flex items-center gap-3 p-2 rounded-lg transition-all duration-300 transform hover:translate-x-1 hover:bg-gray-100 ${
+                        `group flex items-center gap-3 p-2 rounded-lg transition-all duration-300 transform hover:translate-x-1 hover:bg-gray-100 ${
                           isActive
-                            ? "bg-gradient-to-r from-teal-400 to-teal-600 text-white font-semibold"
+                            ? "bg-[#8B6FCB] text-white font-semibold hover:text-[#8B6FCB]"
                             : "text-gray-700"
                         }`
                       }
                     >
-                      <Icon className={`w-5 h-5 ${link.color} flex-shrink-0`} />
-                      {open && <span className="truncate">{link.name}</span>}
+                      {({ isActive }) => (
+                        <>
+                          <Icon
+                            className={`w-5 h-5 flex-shrink-0 transition-colors duration-300 ${
+                              isActive ? "text-white group-hover:text-[#8B6FCB]" : "text-[#B79FDB]"
+                            }`}
+                          />
+                          {open && <span className="truncate">{link.name}</span>}
+                        </>
+                      )}
                     </NavLink>
                   );
                 })}
@@ -133,10 +152,9 @@ export default function Sidebar({ userName = "Admin", children }) {
         </nav>
       </aside>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar — stays fixed as a full overlay, this one's fine since it's meant to float above everything */}
       {mobileOpen && (
-   <aside className="fixed inset-x-0 top-16 bottom-0 z-50 bg-white shadow-lg flex flex-col p-4 overflow-y-auto animate-slideInLeft">
-
+        <aside className="fixed inset-x-0 top-16 bottom-0 z-50 bg-white shadow-lg flex flex-col p-4 overflow-y-auto animate-slideInLeft">
           <div className="flex items-center justify-between mb-6">
             <span className="text-teal-500 font-bold text-lg">Hello {userName}</span>
             <button onClick={() => setMobileOpen(false)}>
@@ -147,9 +165,7 @@ export default function Sidebar({ userName = "Admin", children }) {
           <nav className="flex-1 space-y-4">
             {sections.map((section) => (
               <div key={section.title}>
-                <h3 className="text-gray-400 uppercase text-xs font-semibold px-2 mb-2">
-                  {section.title}
-                </h3>
+                <h3 className="text-gray-400 uppercase text-xs font-semibold px-2 mb-2">{section.title}</h3>
                 <div className="space-y-1">
                   {section.links.map((link) => {
                     const Icon = link.icon;
@@ -157,17 +173,25 @@ export default function Sidebar({ userName = "Admin", children }) {
                       <NavLink
                         key={link.to}
                         to={link.to}
-                        onClick={() => setMobileOpen(false)} // close on click
+                        onClick={() => setMobileOpen(false)}
                         className={({ isActive }) =>
-                          `flex items-center gap-3 p-2 rounded-lg transition-all duration-300 transform hover:translate-x-1 hover:bg-gray-100 ${
+                          `group flex items-center gap-3 p-2 rounded-lg transition-all duration-300 transform hover:translate-x-1 hover:bg-gray-100 ${
                             isActive
-                              ? "bg-gradient-to-r from-teal-400 to-teal-600 text-white font-semibold"
+                              ? "bg-[#8B6FCB] text-white font-semibold hover:text-[#8B6FCB]"
                               : "text-gray-700"
                           }`
                         }
                       >
-                        <Icon className={`w-5 h-5 ${link.color} flex-shrink-0`} />
-                        <span className="truncate">{link.name}</span>
+                        {({ isActive }) => (
+                          <>
+                            <Icon
+                              className={`w-5 h-5 flex-shrink-0 transition-colors duration-300 ${
+                                isActive ? "text-white group-hover:text-[#8B6FCB]" : "text-[#B79FDB]"
+                              }`}
+                            />
+                            <span className="truncate">{link.name}</span>
+                          </>
+                        )}
                       </NavLink>
                     );
                   })}
@@ -186,22 +210,12 @@ export default function Sidebar({ userName = "Admin", children }) {
         onClick={() => setMobileOpen(!mobileOpen)}
         className="md:hidden fixed z-50 p-4 bg-teal-500 text-white rounded-full shadow-lg transition-transform duration-300"
         style={{
-  left: mobilePos.x,
-  top: Math.max(mobilePos.y, 80),
-}}
-
+          left: mobilePos.x,
+          top: Math.max(mobilePos.y, 80),
+        }}
       >
         <Menu className="w-6 h-6" />
       </button>
-
-      {/* Main content */}
-     <div
-  className={`flex-1 transition-all duration-300 p-4 ml-0 ${
-    open ? "md:ml-64" : "md:ml-16"
-  }`}
->
-        {children}
-      </div>
-    </div>
+    </>
   );
 }

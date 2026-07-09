@@ -177,12 +177,12 @@ export default function SystemSettings() {
       {/* HEADER */}
       <header className="mb-10 flex justify-between items-end">
         <div className="space-y-2">
-          <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-indigo-100 text-indigo-600 shadow-sm"><Settings size={26} /></div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight">System Control</h1>
-          </div>
-          <p className="text-slate-500 font-medium ml-12">Manage identity, sorted content, and audit histories.</p>
+  <div className="flex items-center gap-2 p-3 bg-indigo-50 text-indigo-600 rounded-xl w-fit border border-purple-100">
+               <Settings size={18} />
+               <span className="text-sm font-black uppercase tracking-tight">System Settings</span>
+            </div>
         </div>
+          
 
         {(activeTab === "faq" || activeTab === "info") && (
           <button onClick={() => setIsModalOpen(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-200">
@@ -233,7 +233,7 @@ export default function SystemSettings() {
           {activeTab === "branding" && (
             <div className="p-10 grid grid-cols-1 lg:grid-cols-2 gap-16">
               <div className="space-y-8">
-                <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest italic">Core Identity</h3>
+                <h3 className="text-[10px] font-black text-indigo-500 uppercase tracking-widest italic">Website Displayed Information</h3>
                 <EditableField label="Website Name" value={siteConfigs[0]?.website_name} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { website_name: v })} />
                 <EditableField label="Contact Email" value={siteConfigs[0]?.contact_email} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { contact_email: v })} />
                 <EditableField label="About Us" type="textarea" value={siteConfigs[0]?.about_us} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { about_us: v })} />
@@ -242,6 +242,9 @@ export default function SystemSettings() {
                 <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Social Media</h3>
                 <EditableField label="Twitter" value={siteConfigs[0]?.twitter_url} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { twitter_url: v })} />
                 <EditableField label="Facebook" value={siteConfigs[0]?.facebook_url} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { facebook_url: v })} />
+                <EditableField label="Instagram" value={siteConfigs[0]?.instagram_url} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { instagram_url: v })} />
+                <EditableField label="Youtube" value={siteConfigs[0]?.youtube_url} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { youtube_url: v })} />
+                <EditableField label="Tiktok" value={siteConfigs[0]?.tiktok_url} onSave={(v) => updateItem("site_configuration", siteConfigs[0].id, { tiktok_url: v })} />
               </div>
             </div>
           )}

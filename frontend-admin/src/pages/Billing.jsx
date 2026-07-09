@@ -93,18 +93,18 @@ export default function Billing() {
   return (
     <div className="p-6 font-['Inter'] bg-gray-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-4 rounded-xl shadow">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <LayoutGrid className="text-blue-600" /> Billing Management
-            </h1>
-            <p className="text-gray-500 mt-1">Manage invoices, track payments, and configure fees.</p>
+      <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-600 rounded-xl w-fit border border-purple-100">
+               <LayoutGrid size={18} />
+               <span className="text-sm font-black uppercase tracking-tight">Billing Management</span>
+            </div>
           </div>
           
           <button 
             onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
-              showArchived ? "bg-amber-50 border-amber-200 text-amber-700" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+              showArchived ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
             }`}
           >
             <Archive size={18} />
@@ -141,9 +141,9 @@ export default function Billing() {
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
-
+              
               <select 
-                className="w-full px-4 py-2 border border-gray-200 rounded-lg outline-none"
+                className="w-full py-2 border border-gray-200 rounded-lg outline-none"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -152,10 +152,10 @@ export default function Billing() {
                 <option value="pending">Pending</option>
                 <option value="overdue">Overdue</option>
               </select>
-
+              
               <div className="flex gap-2">
                 <select 
-                  className="w-1/3 px-2 py-2 border border-gray-200 rounded-lg outline-none text-xs"
+                  className=" px-6 py-2 border border-gray-200 rounded-lg outline-none text-xs appearance-none"
                   onChange={(e) => setDateFilter({ ...dateFilter, type: e.target.value })}
                 >
                   <option value="all">No Date Filter</option>
@@ -166,7 +166,7 @@ export default function Billing() {
                 <input 
                   type={dateFilter.type === "year" ? "number" : dateFilter.type === "month" ? "month" : "date"}
                   disabled={dateFilter.type === "all"}
-                  className="w-2/3 px-3 py-2 border border-gray-200 rounded-lg outline-none disabled:bg-gray-50"
+                  className=" px-2 py-2 border border-gray-200 rounded-lg outline-none disabled:bg-gray-50"
                   onChange={(e) => setDateFilter({ ...dateFilter, value: e.target.value })}
                 />
               </div>
@@ -176,7 +176,7 @@ export default function Billing() {
                 <select 
                   value={itemsPerPage} 
                   onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="border rounded px-1 py-1"
+                  className="border rounded px-6 py-1"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>

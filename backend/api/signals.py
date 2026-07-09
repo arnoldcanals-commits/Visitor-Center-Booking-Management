@@ -110,7 +110,7 @@ def booking_notifications(sender, instance, created, **kwargs):
             user=instance.tourist,
             notification_type="booking",
             title=f"Booking {instance.status.capitalize()}",
-            message=f"Your booking for {instance.package.name if instance.package else 'Tour'} has been changed to{instance.status}.",
+            message=f"Your booking for {instance.package.name if instance.package else 'Tour'} has been changed to {instance.status}.",
             related_booking=instance
         )
 

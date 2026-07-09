@@ -2,8 +2,10 @@ import moment from "moment";
 import { useContext } from "react";
 import { AdminDataContext } from "../../contexts/AdminDataContext";
 import { Link } from "react-router-dom";
+
 export default function BookingTable({
   bookings,
+  entriesPerPage,
   selectedIds,
   setSelectedIds,
   statusChoices,
@@ -27,11 +29,34 @@ export default function BookingTable({
     );
   };
 
+  // Select-all applies to the bookings currently rendered on this page,
+  // merged with any selections already made elsewhere (e.g. other pages).
+  const allSelected =
+    bookings.length > 0 && bookings.every((b) => selectedIds.includes(b.id));
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !bookings.some((b) => b.id === id)));
+    } else {
+      setSelectedIds((prev) => [...new Set([...prev, ...bookings.map((b) => b.id)])]);
+    }
+  };
+
+  const placeholderCount = Math.max(0, (entriesPerPage || 0) - bookings.length);
+
   return (
     <div className="space-y-4">
       {/* Desktop Header - Hidden on Mobile */}
       <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 text-[11px] uppercase tracking-wider font-bold text-gray-400 rounded-xl">
-        <div className="col-span-1 text-center">Sel</div>
+        <div className="col-span-1 flex justify-center">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={toggleSelectAll}
+            className="w-4 h-4 rounded border-gray-300 text-blue-600 transition"
+            title="Select all on this page"
+          />
+        </div>
         <div className="col-span-3">Tourist / Reference</div>
         <div className="col-span-2">Stay Dates</div>
         <div className="col-span-2">Package</div>
@@ -46,6 +71,7 @@ export default function BookingTable({
           const isArchived = b.is_archived;
           const isUnread = b.read_byStaff === false;
           const isSelected = selectedIds.includes(b.id);
+          const statusMeta = statusChoices.find((s) => s.value === b.status);
 
           return (
             <div
@@ -81,20 +107,24 @@ export default function BookingTable({
                     {b.tourist_name || b.tourist}
                   </p>
                   <p className="text-[10px] font-mono text-gray-400 mt-1 uppercase flex items-center gap-1">
-  Ref: 
-  <Link 
-    to={`/billing/${b.bill_reference}`} 
-    className="text-blue-500 hover:text-blue-700 hover:underline transition-colors"
-  >
-    {b.bill_reference?.slice(-8) || "N/A"}
-  </Link>
-</p>
+                    Ref: 
+                    <Link 
+                      to={`/billing/${b.bill_reference}`} 
+                      className="text-blue-500 hover:text-blue-700 hover:underline transition-colors"
+                    >
+                      {b.bill_reference?.slice(-8) || "N/A"}
+                    </Link>
+                  </p>
                 </div>
 
-                {/* 3. Dates */}
+                {/* 3. Dates - check-in green, check-out purple */}
                 <div className="col-span-2 flex flex-wrap gap-2 mb-3 md:mb-0">
-                   <div className="bg-gray-100 px-2 py-1 rounded text-xs font-medium text-gray-600">
-                    {b.check_in ? moment(b.check_in).format("MMM DD") : "—"} to {b.check_out ? moment(b.check_out).format("MMM DD") : "—"}
+                  <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">
+                    {b.check_in ? moment(b.check_in).format("MMM DD") : "—"}
+                  </div>
+                  <div className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">To</div>
+                  <div className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
+                    {b.check_out ? moment(b.check_out).format("MMM DD") : "—"}
                   </div>
                 </div>
 
@@ -112,18 +142,23 @@ export default function BookingTable({
                   </button>
                 </div>
 
-                {/* 5. Status */}
-                <div className="col-span-2 mb-4 md:mb-0">
+                {/* 5. Status - colored badge + plain (uncolored) dropdown */}
+                <div className="col-span-2 mb-4 md:mb-0 flex items-center gap-2 flex-wrap">
+                  <span
+                    className={`text-[10px] px-2 py-1 rounded-full font-bold text-white shadow-sm ${
+                      statusColors[b.status] || "bg-gray-400"
+                    }`}
+                  >
+                    {statusMeta?.label || b.status}
+                  </span>
                   <select
                     value={b.status}
                     disabled={isArchived}
                     onChange={(e) => { markAsRead(b); handleStatusChange(b.id, e.target.value); }}
-                    className={`w-full md:w-auto text-[11px] px-3 py-1.5 rounded-lg text-white border-none font-bold shadow-sm ${
-                      statusColors[b.status] || "bg-gray-400"
-                    }`}
+                    className="text-[11px] px-4 py-1 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium shadow-sm outline-none focus:border-blue-500"
                   >
                     {statusChoices.map((s) => (
-                      <option key={s.value} value={s.value} className="text-gray-800">{s.label}</option>
+                      <option key={s.value} value={s.value}>{s.label}</option>
                     ))}
                   </select>
                 </div>
@@ -144,17 +179,17 @@ export default function BookingTable({
                   </div>
                 </div>
 
-                {/* 7. Actions */}
-                <div className="col-span-1 text-right mt-4 md:mt-0">
+                {/* 7. Actions - justified to the end, pencil moved after the label */}
+                <div className="col-span-1 flex justify-end mt-4 md:mt-0">
                   <button
                     onClick={() => { markAsRead(b); openEdit(b); }}
                     disabled={isArchived}
-                    className="w-full md:w-auto flex items-center justify-center gap-2 bg-gray-50 hover:bg-gray-100 px-4 py-2 md:p-0 md:bg-transparent text-xs font-bold text-gray-500 hover:text-blue-600 rounded-xl transition-all"
+                    className="w-full md:w-auto flex items-center justify-end gap-2 bg-gray-50 hover:bg-gray-100 px-4 py-2 md:p-0 md:bg-transparent text-xs font-bold text-gray-500 hover:text-blue-600 rounded-xl transition-all"
                   >
+                    <span className="md:hidden">Edit Booking</span>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    <span className="md:hidden">Edit Booking</span>
                   </button>
                 </div>
 
@@ -162,6 +197,16 @@ export default function BookingTable({
             </div>
           );
         })}
+
+        {/* Invisible placeholder rows keep the list the same height
+            regardless of how many real bookings are on this page */}
+        {Array.from({ length: placeholderCount }).map((_, i) => (
+          <div
+            key={`placeholder-${i}`}
+            aria-hidden="true"
+            className="invisible border rounded-2xl p-4 md:p-0 md:h-[75.9px]"
+          />
+        ))}
       </div>
     </div>
   );

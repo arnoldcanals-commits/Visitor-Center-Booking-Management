@@ -17,20 +17,20 @@ export default function YearMonthFilter({ year, month, setYear, setMonth, setCur
   ];
 
   return (
-    <div className="flex gap-2 mb-4">
+    <div className=" flex gap-2 ">
       <select
         value={year}
         onChange={(e) => { setYear(e.target.value); setCurrentPage(1); }}
-        className="border p-2 px-8 rounded"
+        className="border p-2 px-8 rounded border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
       >
         <option value="">All Years</option>
         {years.map((y) => <option key={y} value={y}>{y}</option>)}
       </select>
-
+  
       <select
         value={month}
         onChange={(e) => { setMonth(e.target.value); setCurrentPage(1); }}
-        className="border p-2 px-8 rounded"
+        className="border p-2 px-8 rounded border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
       >
         {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
       </select>

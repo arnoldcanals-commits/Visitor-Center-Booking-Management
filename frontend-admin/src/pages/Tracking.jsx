@@ -186,13 +186,15 @@ const Tracking = () => {
   if (loading) return <div className="h-screen flex items-center justify-center font-black text-slate-400 animate-pulse">SYNCING DATA...</div>;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-50 p-4 md:p-6 overflow-x-hidden">
-      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+    <div className="flex flex-col min-h-screen bg-slate-50 p-4 md:p-6 overflow-x-hidden ">
+      <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 bg-white rounded shadow p-4 rounded-xl">
         <div className="flex items-center gap-4">
-          <div className="bg-teal-600 p-3 rounded-2xl text-white shadow-lg"><Navigation size={28} /></div>
+         <div className="flex items-center gap-2 p-3 bg-teal-50 text-teal-600 rounded-xl w-fit border border-purple-100">
+               <Navigation size={18} />
+               <span className="text-sm font-black uppercase tracking-tight">Tourist Tracking</span>
+            </div>
           <div>
-            <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight leading-none">Guest Tracking</h1>
-            <div className="flex gap-2 mt-2">
+        <div className="flex gap-2 mt-2">
                 <FilterButton active={roleFilter === "all"} onClick={() => setRoleFilter("all")} label="All" />
                 <FilterButton active={roleFilter === "station_staff"} onClick={() => setRoleFilter("station_staff")} label="Staff Only" />
             </div>

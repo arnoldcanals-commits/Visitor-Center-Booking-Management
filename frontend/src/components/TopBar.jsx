@@ -80,6 +80,24 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
     navigate(`/?query=${encodeURIComponent(trimmed)}`);
   };
 
+
+// web info
+const [config, setConfig] = useState(null);
+useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const res = await api.get("/api/site-info/"); 
+                setConfig(res.data);
+            } catch (err) {
+                console.error("Footer config error:", err);
+            }
+        };
+        fetchConfig();
+    }, []);
+
+
+
+
   return (
     <header className="sticky top-0 z-50 bg-white shadow-md min-h-[64px]">
       {authPanelOpen && (
@@ -98,7 +116,7 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
               <img className="h-8 w-auto" src="/VCMS.ico" alt="Logo" />
             </a>
             <h1 className="text-lg font-bold text-teal-900 whitespace-nowrap">
-              Sablayan Visitor Center
+            {config?.website_name}
             </h1>
           </div>
 

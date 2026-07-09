@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import api from '../api'; 
+import api from '../api';
 import { Bell, BellDot, CheckCheck, Info, Calendar, FileText, AlertCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 
-const NotificationBell = () => {
-  const [notifications, setNotifications] = useState([]); 
+// itemsPerPage is now a prop so any parent can control the page size,
+// but it still defaults to 5 if nothing is passed in.
+const NotificationBell = ({ itemsPerPage: initialItemsPerPage = 5, pageSizeOptions = [5, 10, 20] }) => {
+  const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 5;
+  const [itemsPerPage, setItemsPerPage] = useState(initialItemsPerPage); // adjustable at runtime too
   const dropdownRef = useRef(null);
 
   const getIcon = (type) => {
@@ -20,12 +22,18 @@ const NotificationBell = () => {
     }
   };
 
-  // 1. Sort newest first and 2. Handle Pagination Slicing
+  // Unread first, then newest first within each group (unread and read).
   const sortedNotifications = useMemo(() => {
-    return [...notifications].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    return [...notifications].sort((a, b) => {
+      // is_read: false (unread) should sort before true (read)
+      if (a.is_read !== b.is_read) {
+        return a.is_read ? 1 : -1;
+      }
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
   }, [notifications]);
 
-  const totalPages = Math.ceil(sortedNotifications.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedNotifications.length / itemsPerPage));
   const currentItems = sortedNotifications.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
@@ -52,6 +60,7 @@ const NotificationBell = () => {
       await api.post('/api/notifications/mark_all_as_read/');
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       setUnreadCount(0);
+      setCurrentPage(1); // reset since sort order shifts once everything is read
     } catch (err) {
       console.error("Failed to mark all as read", err);
     } finally {
@@ -89,9 +98,14 @@ const NotificationBell = () => {
     if (!isOpen) setCurrentPage(1);
   }, [isOpen]);
 
+  // If page size changes and we'd be stranded past the last page, snap back.
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [itemsPerPage, totalPages, currentPage]);
+
   return (
     <div className="relative inline-block" ref={dropdownRef}>
-      <button 
+      <button
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-all border-none bg-transparent cursor-pointer flex items-center justify-center"
       >
@@ -107,7 +121,7 @@ const NotificationBell = () => {
         <div className="absolute right-0 mt-3 w-80 bg-white border border-gray-200 rounded-xl shadow-2xl z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
             <span className="font-bold text-gray-800 text-sm">Notifications</span>
-            <button 
+            <button
                 onClick={markAllAsRead}
                 disabled={loading || unreadCount === 0}
                 className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium bg-transparent border-none cursor-pointer disabled:opacity-30"
@@ -125,8 +139,8 @@ const NotificationBell = () => {
               </div>
             ) : (
               currentItems.map(n => (
-                <div 
-                  key={n.id} 
+                <div
+                  key={n.id}
                   onClick={() => markAsRead(n.id, n.is_read)}
                   className={`flex gap-3 p-4 border-b border-gray-50 transition-all ${
                     n.is_read ? 'bg-white opacity-70' : 'bg-teal-50/30 hover:bg-teal-50'
@@ -145,31 +159,46 @@ const NotificationBell = () => {
               ))
             )}
           </div>
-          
-          {/* Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-100">
-              <button 
+
+          {/* Pagination Controls + adjustable page size */}
+          {sortedNotifications.length > 0 && (
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 border-t border-gray-100 gap-2">
+              <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}
                 className="p-1 disabled:opacity-30 hover:bg-gray-200 rounded-md transition-colors border-none bg-transparent cursor-pointer"
               >
                 <ChevronLeft size={18} />
               </button>
+
               <span className="text-[11px] text-gray-500 font-medium">
                 Page {currentPage} of {totalPages}
               </span>
-              <button 
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                disabled={currentPage === totalPages}
-                className="p-1 disabled:opacity-30 hover:bg-gray-200 rounded-md transition-colors border-none bg-transparent cursor-pointer"
-              >
-                <ChevronRight size={18} />
-              </button>
+
+              <div className="flex items-center gap-2">
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="text-[11px] border border-gray-200 rounded-md bg-white text-gray-600 px-4 py-0.5 cursor-pointer"
+                >
+                  {pageSizeOptions.map(size => (
+                    <option key={size} value={size}>{size}/page</option>
+                  ))}
+                </select>
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="p-1 disabled:opacity-30 hover:bg-gray-200 rounded-md transition-colors border-none bg-transparent cursor-pointer"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
             </div>
           )}
-
-         
         </div>
       )}
     </div>

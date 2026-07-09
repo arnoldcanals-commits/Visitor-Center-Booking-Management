@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useRef } from 'react';
 import { AdminDataContext } from '../contexts/AdminDataContext';
 import { 
   Plus, Edit2, Archive, Eye, EyeOff, Package, Search,
@@ -49,7 +49,7 @@ const RichTextEditor = ({ value, onChange }) => {
 }
 
 const Packages = () => {
-  const { adminData, createItem, updateItem, loading } = useContext(AdminDataContext);
+  const { adminData, createItem, updateItem, deleteItem, loading } = useContext(AdminDataContext);
   const [showArchived, setShowArchived] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [galleryPackage, setGalleryPackage] = useState(null);
@@ -62,6 +62,20 @@ const Packages = () => {
     is_active: true, is_archived: false
   });
   const [selectedImages, setSelectedImages] = useState([]);
+
+  // Long-press-to-show-tooltip support (mobile has no hover state)
+  const [activeTooltip, setActiveTooltip] = useState(null);
+  const longPressTimer = useRef(null);
+  const LONG_PRESS_MS = 450;
+
+  const handleTouchStart = (key) => {
+    clearTimeout(longPressTimer.current);
+    longPressTimer.current = setTimeout(() => setActiveTooltip(key), LONG_PRESS_MS);
+  };
+  const handleTouchEnd = () => {
+    clearTimeout(longPressTimer.current);
+    setActiveTooltip(null);
+  };
 
   // Filter Logic
   const packages = adminData.packages || [];
@@ -94,12 +108,27 @@ const Packages = () => {
 
   const setMainImage = async (packageId, imageId) => {
     await updateItem('package_images', imageId, { is_main: true });
-    setGalleryPackage(null);
+    setGalleryPackage(prev => prev ? {
+      ...prev,
+      images: prev.images.map(img => ({ ...img, is_main: img.id === imageId }))
+    } : prev);
   };
 
-  // Tooltip Component
-  const Tooltip = ({ text }) => (
-    <span className="absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-md opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 whitespace-nowrap shadow-xl scale-90 group-hover:scale-100">
+  const removeImage = async (imageId) => {
+    if (!window.confirm('Remove this photo? This cannot be undone.')) return;
+    const success = await deleteItem('package_images', imageId);
+    if (success) {
+      setGalleryPackage(prev => prev ? {
+        ...prev,
+        images: prev.images.filter(img => img.id !== imageId)
+      } : prev);
+    }
+  };
+
+  // Tooltip Component - shows on hover (desktop) via the /btn named group,
+  // or when forced open via `show` (mobile long-press)
+  const Tooltip = ({ text, show }) => (
+    <span className={`absolute -top-10 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-md transition-all duration-200 pointer-events-none z-50 whitespace-nowrap shadow-xl group-hover/btn:opacity-100 group-hover/btn:scale-100 ${show ? 'opacity-100 scale-100' : 'opacity-0 scale-90'}`}>
       {text}
       <span className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-900"></span>
     </span>
@@ -114,15 +143,11 @@ const Packages = () => {
         {/* Header & Search */}
         <header className="mb-10 space-y-6">
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-indigo-100 text-indigo-600 shadow-sm">
-                <Package size={26} />
-              </div>
-              <h1 className="text-4xl font-black text-slate-900 tracking-tight">Package Gallery</h1>
+      
+              <div className="flex items-center gap-2 p-3 bg-indigo-50 text-indigo-600 rounded-xl w-fit border border-purple-100">
+               <Package size={18} />
+               <span className="text-sm font-black uppercase tracking-tight">Tour Package Management</span>
             </div>
-            <p className="text-slate-500 font-medium ml-14">
-              Manage your Sablayan tour offerings and media.
-            </p>
           </div>
 
           {/* Action Toolbar - White Panel Style */}
@@ -169,9 +194,9 @@ const Packages = () => {
             return (
               <div key={pkg.id} className="bg-white rounded-[2rem] shadow-sm border border-slate-200 overflow-hidden flex flex-col group hover:shadow-xl transition-all duration-300">
                 {/* Cropped Image Area */}
-                <div className="h-48 bg-slate-100 relative overflow-hidden">
+                <div className="h-48 min-h-[12rem] bg-slate-100 relative overflow-hidden">
                   {mainImg ? (
-                    <img src={mainImg.image} alt={pkg.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                    <img src={mainImg.image} alt={pkg.name} className="w-full h-full object-cover min-w-full min-h-full transition-transform duration-700 group-hover:scale-105" />
                   ) : (
                     <div className="flex items-center justify-center h-full text-slate-300"><ImageIcon size={40} /></div>
                   )}
@@ -199,28 +224,43 @@ const Packages = () => {
                   
                   <div className="mt-auto pt-5 border-t border-slate-50 flex items-center justify-between">
                     <div className="flex gap-1.5">
-                      <div className="relative group/btn">
+                      <div 
+                        className="relative group/btn"
+                        onTouchStart={() => handleTouchStart(`${pkg.id}-edit`)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                      >
                         <button onClick={() => handleOpenModal(pkg)} className="p-2.5 bg-slate-50 hover:bg-indigo-600 hover:text-white text-slate-500 rounded-xl transition-all">
                           <Edit2 size={16} />
                         </button>
-                        <Tooltip text="Edit" />
+                        <Tooltip text="Edit" show={activeTooltip === `${pkg.id}-edit`} />
                       </div>
 
-                      <div className="relative group/btn">
+                      <div 
+                        className="relative group/btn"
+                        onTouchStart={() => handleTouchStart(`${pkg.id}-gallery`)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                      >
                         <button onClick={() => setGalleryPackage(pkg)} className="p-2.5 bg-slate-50 hover:bg-indigo-600 hover:text-white text-slate-500 rounded-xl transition-all">
                           <Maximize2 size={16} />
                         </button>
-                        <Tooltip text="Gallery" />
+                        <Tooltip text="Gallery" show={activeTooltip === `${pkg.id}-gallery`} />
                       </div>
 
-                      <div className="relative group/btn">
+                      <div 
+                        className="relative group/btn"
+                        onTouchStart={() => handleTouchStart(`${pkg.id}-archive`)}
+                        onTouchEnd={handleTouchEnd}
+                        onTouchCancel={handleTouchEnd}
+                      >
                         <button 
                           onClick={() => updateItem('packages', pkg.id, { is_archived: !pkg.is_archived })} 
                           className={`p-2.5 rounded-xl transition-all ${pkg.is_archived ? 'bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white' : 'bg-slate-50 text-amber-600 hover:bg-amber-600 hover:text-white'}`}
                         >
                           {pkg.is_archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                         </button>
-                        <Tooltip text={pkg.is_archived ? "Restore" : "Archive"} />
+                        <Tooltip text={pkg.is_archived ? "Restore" : "Archive"} show={activeTooltip === `${pkg.id}-archive`} />
                       </div>
                     </div>
 
@@ -251,14 +291,31 @@ const Packages = () => {
               </div>
               <div className="p-8 grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto">
                 {galleryPackage.images?.map((img) => (
-                  <div key={img.id} className={`group/img relative aspect-square rounded-2xl overflow-hidden border-2 transition-all ${img.is_main ? 'border-indigo-500 scale-105 z-10' : 'border-slate-100 hover:border-indigo-200'}`}>
-                    <img src={img.image} className="w-full h-full object-cover" alt="Gallery" />
+                  <div 
+                    key={img.id} 
+                    className={`group/img relative aspect-square min-w-[110px] min-h-[110px] rounded-2xl overflow-hidden border-2 transition-all ${img.is_main ? 'border-indigo-500 scale-105 z-10' : 'border-slate-100 hover:border-indigo-200'}`}
+                    onTouchStart={() => handleTouchStart(`${img.id}-remove`)}
+                    onTouchEnd={handleTouchEnd}
+                    onTouchCancel={handleTouchEnd}
+                  >
+                    <img src={img.image} className="w-full h-full object-cover min-w-full min-h-full" alt="Gallery" />
+
+                    {/* Remove photo */}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeImage(img.id); }}
+                      className={`absolute top-2 left-2 z-30 p-1.5 bg-rose-600/90 hover:bg-rose-700 text-white rounded-full shadow-lg transition-opacity opacity-0 group-hover/img:opacity-100 ${activeTooltip === `${img.id}-remove` ? 'opacity-100' : ''}`}
+                      title="Remove photo"
+                    >
+                      <X size={12} />
+                    </button>
+
                     {img.is_main ? (
-                      <div className="absolute top-2 right-2 bg-indigo-600 text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-black shadow-xl">
+                      <div className="absolute top-2 right-2 bg-indigo-600 text-white px-2 py-0.5 rounded-md flex items-center gap-1 text-[8px] font-black shadow-xl z-20">
                         <Star size={10} fill="white" /> MAIN
                       </div>
                     ) : (
-                      <button onClick={() => setMainImage(galleryPackage.id, img.id)} className="absolute inset-0 bg-indigo-600/80 flex flex-col items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
+                      <button onClick={() => setMainImage(galleryPackage.id, img.id)} className="absolute inset-0 z-10 bg-indigo-600/80 flex flex-col items-center justify-center opacity-0 group-hover/img:opacity-100 transition-opacity">
                         <CheckCircle2 size={24} className="text-white mb-1" />
                         <span className="text-white font-black text-[8px] tracking-widest uppercase">Set Cover</span>
                       </button>
