@@ -33,7 +33,6 @@ pyphen==0.17.2
 python-dateutil==2.9.0.post0
 python-docx==1.2.0
 python-dotenv==1.2.2
-python-environ==0.4.54
 pytz==2026.1.post1
 redis==8.1.0
 six==1.17.0
