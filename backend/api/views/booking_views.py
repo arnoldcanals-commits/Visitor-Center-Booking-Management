@@ -1,12 +1,13 @@
 from rest_framework import generics, mixins, viewsets, permissions
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.permissions import (
     IsAuthenticated,
     IsAuthenticatedOrReadOnly,
     AllowAny,
 )
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db.models import Prefetch
 
 from ..models import (
@@ -38,6 +39,9 @@ class BookingCreateView(generics.CreateAPIView):
 # ============================================================
 # USER BOOKINGS (LIST / RETRIEVE / UPDATE if pending)
 # ============================================================
+from rest_framework.exceptions import PermissionDenied
+
+
 class UserBookingViewSet(
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
@@ -79,8 +83,26 @@ class UserBookingViewSet(
     def perform_update(self, serializer):
         booking = self.get_object()
 
+        validated = serializer.validated_data
+        is_cancellation_request_only = (
+            validated.get("requested_cancellation") is True
+            and set(validated.keys()) <= {"requested_cancellation"}
+        )
+
+        if is_cancellation_request_only:
+            if booking.status in ("completed", "cancelled", "rejected"):
+                raise PermissionDenied(
+                    "This booking can no longer be cancelled."
+                )
+            if booking.requested_cancellation:
+                raise PermissionDenied(
+                    "Cancellation has already been requested for this booking."
+                )
+            serializer.save()
+            return
+
         if booking.status != "pending":
-            raise permissions.PermissionDenied(
+            raise PermissionDenied(
                 "You can only edit or cancel bookings while they are pending."
             )
 
@@ -88,11 +110,9 @@ class UserBookingViewSet(
 
     # Explicitly block DELETE
     def destroy(self, request, *args, **kwargs):
-        raise permissions.PermissionDenied(
+        raise PermissionDenied(
             "Bookings cannot be deleted."
         )
-
-
 # ============================================================
 # CREATE REVIEW (TOURIST)
 # ============================================================
@@ -155,7 +175,7 @@ from ..serializers import UserProfileSerializer
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
     def get_object(self):
     
     

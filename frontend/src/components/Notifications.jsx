@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../api';
 import { Bell, BellDot, CheckCheck, Info, Calendar, FileText, AlertCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
-
+import { AuthContext } from './Auth';
 // itemsPerPage is now a prop so any parent can control the page size,
 // but it still defaults to 5 if nothing is passed in.
 const NotificationBell = ({ itemsPerPage: initialItemsPerPage = 5, pageSizeOptions = [5, 10, 20] }) => {
@@ -109,7 +109,7 @@ const NotificationBell = ({ itemsPerPage: initialItemsPerPage = 5, pageSizeOptio
         onClick={() => setIsOpen(!isOpen)}
         className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-all border-none bg-transparent cursor-pointer flex items-center justify-center"
       >
-        {unreadCount > 0 ? <BellDot size={22} className="text-teal-600" /> : <Bell size={22} />}
+        {unreadCount > 0 ? <BellDot size={22} className="text-[var(--accent)]" /> : <Bell size={22} />}
         {unreadCount > 0 && (
           <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1 rounded-full min-w-[16px] h-4 flex items-center justify-center">
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -124,14 +124,14 @@ const NotificationBell = ({ itemsPerPage: initialItemsPerPage = 5, pageSizeOptio
             <button
                 onClick={markAllAsRead}
                 disabled={loading || unreadCount === 0}
-                className="flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium bg-transparent border-none cursor-pointer disabled:opacity-30"
+                className="flex items-center gap-1 text-xs text-[var(--accent)] hover:text-teal-700 font-medium bg-transparent border-none cursor-pointer disabled:opacity-30"
             >
               {loading ? <Loader2 size={14} className="animate-spin" /> : <CheckCheck size={14} />}
               Mark all read
             </button>
           </div>
 
-          <div className="min-h-[100px] max-h-[440px] overflow-y-auto">
+          <div className="min-h-[100px] max-h-[440px] overflow-y-auto bg-white dark:bg-gray-900">
             {currentItems.length === 0 ? (
               <div className="p-10 text-center text-gray-400">
                 <Bell size={40} className="mx-auto mb-2 opacity-10" />

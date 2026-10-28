@@ -13,7 +13,7 @@ const EditableField = ({ label, value, type = "text", onSave }) => {
   return (
     <div className="relative group">
       {/* Label */}
-      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+      <label className="block text-[10px] font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-1">
         {label}
       </label>
 
@@ -21,14 +21,14 @@ const EditableField = ({ label, value, type = "text", onSave }) => {
       {editing ? (
         type === "textarea" ? (
           <textarea
-            className="w-full p-4 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 outline-none transition-all bg-indigo-50 text-slate-900 font-medium"
+            className="w-full p-4 rounded-xl border border-[var(--accent)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none transition-all bg-[var(--accent)]/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
             value={val}
             onChange={(e) => setVal(e.target.value)}
           />
         ) : (
           <input
             type="text"
-            className="w-full p-4 rounded-xl border border-indigo-200 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200 outline-none transition-all bg-indigo-50 text-slate-900 font-medium"
+            className="w-full p-4 rounded-xl border border-[var(--accent)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)] outline-none transition-all bg-[var(--accent)]/10 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-medium"
             value={val}
             onChange={(e) => setVal(e.target.value)}
           />
@@ -36,14 +36,14 @@ const EditableField = ({ label, value, type = "text", onSave }) => {
       ) : (
         <div
           onClick={() => setEditing(true)}
-          className="flex items-center justify-between cursor-pointer p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-indigo-300 transition-all group"
+          className="flex items-center justify-between cursor-pointer p-4 bg-slate-50 border border-slate-200 dark:bg-white/5 dark:border-slate-800 rounded-xl hover:border-[var(--accent)] dark:hover:border-[var(--accent)] transition-all group"
         >
-          <span className="truncate text-slate-700 font-semibold">
+          <span className="truncate text-slate-700 dark:text-slate-200 font-semibold">
             {val || "Empty"}
           </span>
           <Pencil
             size={16}
-            className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="text-[var(--accent)] opacity-0 group-hover:opacity-100 transition-opacity"
           />
         </div>
       )}
@@ -53,7 +53,7 @@ const EditableField = ({ label, value, type = "text", onSave }) => {
         <div className="flex gap-2 mt-2 justify-end">
           <button
             onClick={handleSave}
-            className="flex items-center gap-1 bg-indigo-600 text-white px-4 py-1 rounded-full text-xs font-bold hover:bg-indigo-700 transition-all"
+            className="flex items-center gap-1 bg-[var(--accent)] text-white px-4 py-1 rounded-full text-xs font-bold hover:brightness-90 transition-all"
           >
             <Check size={14} /> Save
           </button>
@@ -62,7 +62,7 @@ const EditableField = ({ label, value, type = "text", onSave }) => {
               setVal(value);
               setEditing(false);
             }}
-            className="flex items-center gap-1 bg-slate-200 text-slate-700 px-4 py-1 rounded-full text-xs font-bold hover:bg-slate-300 transition-all"
+            className="flex items-center gap-1 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-4 py-1 rounded-full text-xs font-bold hover:bg-slate-300 dark:hover:bg-slate-700 transition-all"
           >
             <X size={14} /> Cancel
           </button>

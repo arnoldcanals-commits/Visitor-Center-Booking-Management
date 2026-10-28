@@ -6,6 +6,7 @@ from .models import (
     PermitType,
     TourPackage,
     TourPackageImage,
+    Activity,
     TourEvent,
     TourEventItinerary,
     Station,
@@ -69,12 +70,26 @@ class TourPackageImageInline(admin.TabularInline):
     extra = 1
 
 
+class ActivityInline(admin.TabularInline):
+    model = Activity
+    extra = 1
+    fields = ("name", "description", "extra_price", "is_active")
+
+
 @admin.register(TourPackage)
 class TourPackageAdmin(admin.ModelAdmin):
     list_display = ("name", "base_price", "requires_permit", "created_at")
     search_fields = ("name",)
     list_filter = ("requires_permit",)
-    inlines = [TourPackageImageInline]
+    inlines = [TourPackageImageInline, ActivityInline]
+
+
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ("name", "package", "extra_price", "is_active")
+    list_filter = ("is_active", "package")
+    search_fields = ("name", "package__name")
+    autocomplete_fields = ("package",)
 
 
 # =====================================================
@@ -107,6 +122,7 @@ class BookingAdmin(admin.ModelAdmin):
     search_fields = ("tourist__email", "package__name", "id")
     autocomplete_fields = ("tourist", "package", "event")
     readonly_fields = ("assigned_guide", "itinerary", "created_at")
+    filter_horizontal = ("selected_activities",)
     inlines = [BookingGuestInline]
 
 
@@ -243,4 +259,3 @@ class EventStationGuestCheckAdmin(admin.ModelAdmin):
 @admin.register(EventStationGuideCheck)
 class EventStationGuideCheckAdmin(admin.ModelAdmin):
     list_display = ("event_station_check", "guide")
-

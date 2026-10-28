@@ -11,6 +11,7 @@ class FeeTypeSerializer(serializers.ModelSerializer):
             "description",
             "default_amount",
             "is_active",
+            'is_archived'
         ]
         read_only_fields = ["id"]
 
@@ -49,6 +50,7 @@ class BillItemSerializer(serializers.ModelSerializer):
             "discount_amount",
             "final_amount",
             "created_at",
+
         ]
         read_only_fields = ["id", "final_amount", "created_at"]
 

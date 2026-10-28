@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import TopBar from "../../components/TopBar";
 import AuthPanel from "../../components/AuthPanel";
 import PackageDetailContent from "../../components/packages/PackageDetailContent";
-import PackageList from "../../components/PackageList";
+
+import PackageCarousel from "../../components/packages/PackageCarouel";
 import api from "../../api";
 
 export default function PackageDetail() {
@@ -16,7 +17,6 @@ export default function PackageDetail() {
   const [loadingDetail, setLoadingDetail] = useState(true);
   const [loadingPackages, setLoadingPackages] = useState(true);
 
-  // --- Check auth once on mount
   useEffect(() => {
     const token = localStorage.getItem("access");
     setIsAuthenticated(!!token);
@@ -28,7 +28,6 @@ export default function PackageDetail() {
     setAuthPanelOpen(false);
   };
 
-  // --- Fetch single package detail
   useEffect(() => {
     if (!selectedPackageId) return;
 
@@ -48,7 +47,6 @@ export default function PackageDetail() {
     fetchPackageDetail();
   }, [selectedPackageId]);
 
-  // --- Fetch all packages for right column
   useEffect(() => {
     const fetchPackages = async () => {
       setLoadingPackages(true);
@@ -76,10 +74,10 @@ export default function PackageDetail() {
   }, []);
 
   const selectedIdNum = Number(selectedPackageId);
+  const otherPackages = packages.filter((pkg) => Number(pkg.id) !== selectedIdNum);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* --- TopBar + AuthPanel --- */}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <TopBar openAuth={() => setAuthPanelOpen(true)} isAuthenticated={isAuthenticated} />
       {authPanelOpen && (
         <AuthPanel
@@ -89,10 +87,10 @@ export default function PackageDetail() {
         />
       )}
 
-      {/* --- Main two-column layout --- */}
-      <div className="px-4 sm:px-6 flex flex-col lg:flex-row gap-6 w-full">
-        {/* Left column: Package detail */}
-        <div className="flex-1">
+      {/* --- Stacked layout: detail on top, carousel pinned below --- */}
+      <div className="flex flex-col w-full bg-white dark:bg-gray-900">
+        {/* Detail content */}
+        <div className="px-4 sm:px-6 pt-6">
           {loadingDetail ? (
             <p>Loading package details...</p>
           ) : packageDetail ? (
@@ -102,16 +100,17 @@ export default function PackageDetail() {
           )}
         </div>
 
-        {/* Right column: Package list */}
-        <div className="mt-12 w-full flex justify-center lg:justify-start lg:max-w-none lg:w-80 pb-28">
+        {/* Carousel section */}
+        <div className="mt-10 pb-16 px-4 sm:px-6">
+          <h2 className="text-lg font-semibold mb-3 dark:text-white">
+            You might also like
+          </h2>
           {loadingPackages ? (
             <p>Loading packages...</p>
-          ) : packages.length === 0 ? (
+          ) : otherPackages.length === 0 ? (
             <p>No packages available.</p>
           ) : (
-            <PackageList
-              packages={packages.filter((pkg) => Number(pkg.id) !== selectedIdNum)}
-            />
+            <PackageCarousel packages={otherPackages} />
           )}
         </div>
       </div>

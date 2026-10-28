@@ -21,7 +21,7 @@ export default function YearMonthFilter({ year, month, setYear, setMonth, setCur
       <select
         value={year}
         onChange={(e) => { setYear(e.target.value); setCurrentPage(1); }}
-        className="border p-2 px-8 rounded border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
+        className="border dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 p-2 px-8 rounded border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
       >
         <option value="">All Years</option>
         {years.map((y) => <option key={y} value={y}>{y}</option>)}
@@ -30,7 +30,7 @@ export default function YearMonthFilter({ year, month, setYear, setMonth, setCur
       <select
         value={month}
         onChange={(e) => { setMonth(e.target.value); setCurrentPage(1); }}
-        className="border p-2 px-8 rounded border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
+        className="border dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 p-2 px-8 rounded border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
       >
         {months.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
       </select>

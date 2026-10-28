@@ -33,6 +33,9 @@ router = DefaultRouter()
 # Note: Keep these if you still need the ViewSet logic for public-facing apps
 router.register("site_admin/packages-legacy", TourPackageViewSet, basename='legacy-packages')
 router.register(r'notifications', NotificationViewSet, basename='notification')
+from api.views import UserAdminViewSet
+
+router.register(r"site_admin/users", UserAdminViewSet, basename="admin-user")
 # ============================================================
 # URLPATTERNS
 # ============================================================
@@ -92,12 +95,12 @@ urlpatterns = [
     path("site_admin/token/", AdminTokenObtainPairView.as_view(), name="admin_token"),
     path("site_admin/token/refresh/", AdminTokenRefreshView.as_view(), name="admin_refresh"),
     path("site_admin/all-data/", AdminAllDataView.as_view(), name="admin-all-data"),
-
+    
     # ========================================================
     # USERS & GUESTS
     # ========================================================
-    path("site_admin/users/", AdminUserListCreateView.as_view(), name="admin-users"),
-    path("site_admin/users/<int:pk>/", AdminUserDetailView.as_view(), name="admin-user-detail"),
+    
+  
     path("site_admin/guests/", AdminGuestListCreateView.as_view(), name="admin-guests"),
     path("site_admin/guests/<int:pk>/", AdminGuestDetailView.as_view(), name="admin-guest-detail"),
 

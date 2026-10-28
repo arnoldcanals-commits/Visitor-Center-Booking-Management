@@ -4,6 +4,7 @@ from ..models import (
     TourPackage,
     TourPackageImage,
     TourEvent,
+    Activity,
     Review,
 
 )
@@ -26,12 +27,19 @@ class TourPackageImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image', 'package']
 
 
+class ActivitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Activity
+        fields = ['id', 'name', 'description', 'extra_price', 'is_active']
+
+
 class TourPackageSerializer(serializers.ModelSerializer):
     images = TourPackageImageSerializer(many=True, read_only=True)
+    activities = ActivitySerializer(many=True, read_only=True)
     average_rating = serializers.SerializerMethodField()
     class Meta:
         model = TourPackage
-        fields = ['id', 'name', 'description', 'base_price', 'images','short_description', "digest","average_rating"]
+        fields = ['id', 'name', 'description', 'base_price', 'images', 'activities', 'short_description', "digest","average_rating"]
 
     def get_average_rating(self, obj):
         avg = (
@@ -84,6 +92,7 @@ class PackageEventPreviewSerializer(serializers.ModelSerializer):
 class PackageDetailSerializer(serializers.ModelSerializer):
     images = PackageDetailImageSerializer(many=True, read_only=True)
     events = PackageEventPreviewSerializer(many=True, read_only=True)
+    activities = ActivitySerializer(many=True, read_only=True)
     guide_reviews = serializers.SerializerMethodField()
     average_rating = serializers.SerializerMethodField()
     booking_count = serializers.IntegerField(read_only=True)
@@ -92,7 +101,7 @@ class PackageDetailSerializer(serializers.ModelSerializer):
         model = TourPackage
         fields = [
             'id', 'name', 'short_description', 'description', 'base_price', 'requires_permit',
-            'created_at', 'images', 'events', 'booking_count', 'average_rating', 'guide_reviews','digest',
+            'created_at', 'images', 'events', 'activities', 'booking_count', 'average_rating', 'guide_reviews','digest',
         ]
     
     def get_average_rating(self, obj):
@@ -106,4 +115,3 @@ class PackageDetailSerializer(serializers.ModelSerializer):
     
     def get_guide_reviews(self,obj):
       return  0
-    

@@ -63,8 +63,8 @@ class UserSerializer(serializers.ModelSerializer):
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'phone_number', 'profile_picture', 'role', 'status']
-        read_only_fields = ['role', 'email'] 
+        fields = ['id', 'username', 'email', 'phone_number', 'profile_picture', 'role', 'status', 'darkMode', 'themeColor','is_email_verified']
+        read_only_fields = ['role', 'email', 'is_email_verified'] 
 
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password

@@ -55,7 +55,7 @@ const Footer = () => {
                     
                     {/* Branding */}
                     <div className="space-y-4 text-center md:text-left">
-                        <h2 className="text-2xl font-bold text-blue-400">{config.website_name}</h2>
+                        <h2 className="text-2xl font-bold text-[var(--accent)]">{config.website_name}</h2>
                         <p className="text-gray-400 text-sm leading-relaxed max-w-xs mx-auto md:mx-0">
                             {config.about_us}
                         </p>
@@ -74,7 +74,7 @@ const Footer = () => {
                                 </button>
                             </li>
                             <li className="flex items-center justify-center md:justify-start gap-2">
-                                <Mail size={16} className="text-blue-400" />
+                                <Mail size={16} className="text-[var(--accent)]" />
                                 <span>{config.contact_email}</span>
                             </li>
                             <li className="flex items-center justify-center md:justify-start gap-2">

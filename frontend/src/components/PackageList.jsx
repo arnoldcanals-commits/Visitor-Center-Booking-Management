@@ -9,7 +9,7 @@ export default function PackageList({ packages }) {
   return (
     <div
       className="
-        packages-wrapper
+        packages-wrapper 
         grid
         grid-cols-[repeat(auto-fit,minmax(225px,auto))] /* changed max width to auto */
         gap-5

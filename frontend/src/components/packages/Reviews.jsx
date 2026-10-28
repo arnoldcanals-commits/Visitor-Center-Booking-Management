@@ -92,7 +92,7 @@ export default function Reviews({ packageId }) {
     );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 ">
       {reviews.map((review) => {
         const reviewRemoved = !review.is_active;
 
@@ -112,7 +112,7 @@ export default function Reviews({ packageId }) {
         return (
           <div
             key={review.id}
-            className="bg-white/40 backdrop-blur-md border border-white/30 rounded-xl p-4 shadow-sm"
+            className="bg-white/40 backdrop-blur-md border border-white/30 rounded-xl p-4 shadow-sm dark:bg-gray-900"
           >
             {/* REVIEW REMOVED */}
             {reviewRemoved ? (
@@ -173,7 +173,7 @@ export default function Reviews({ packageId }) {
                 </div>
 
                 {/* COMMENT */}
-                <div className="text-gray-800">
+                <div className="text-gray-800 dark:text-white">
                   {review.comment}
                 </div>
 

@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+
+import { Sun, Moon } from "lucide-react";
 import AuthPanel from "./AuthPanel";
 import SearchBar from "./SearchBar";
 import api from "../api";
 import NotificationBell from "./Notifications";
 import UserMenu from "./usermenu";
+import ProfileModal from "./UserInfo";
+import { AuthContext } from "./Auth";
+
 export default function TopBar({ search: propSearch, setSearch: propSetSearch }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,57 +21,26 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
   const search = isHome ? propSearch ?? "" : internalSearch;
   const setSearch = isHome ? propSetSearch ?? (() => {}) : setInternalSearch;
 
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  // --- Auth + theme come from context ---
+  const { user, isAuthenticated, theme, updateTheme, logout, onLoginSuccess } = useContext(AuthContext);
+
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
   const [menuOpen, setMenuOpen] = useState(false);
-
-  // --- Fetch current user ---
-  useEffect(() => {
-    const fetchUser = async () => {
-      const access = localStorage.getItem("access");
-      const refresh = localStorage.getItem("refresh");
-
-      if (!access && !refresh) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      try {
-        const res = await api.get("/api/user/me/");
-        setUser(res.data);
-        setIsAuthenticated(true);
-      } catch (err) {
-        console.error("Failed to fetch user:", err);
-        setIsAuthenticated(false);
-      }
-    };
-    fetchUser();
-  }, []);
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const openAuth = (mode = "login") => {
     setAuthMode(mode);
     setAuthPanelOpen(true);
   };
 
-  const handleLoginSuccess = async () => {
-    try {
-      const res = await api.get("/api/user/me/");
-      setUser(res.data);
-      setIsAuthenticated(true);
-    } catch (err) {
-      console.error(err);
-    }
-    setAuthPanelOpen(false);
+  const openProfile = () => {
+    setMenuOpen(false); // close the mobile menu so it isn't sitting behind the modal
+    setProfileOpen(true);
   };
 
-  const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
-    setIsAuthenticated(false);
-    setUser(null);
-    window.location.reload();
+  const toggleDarkMode = () => {
+    updateTheme({ darkMode: !theme.darkMode });
   };
 
   // --- Search submit ---
@@ -76,49 +50,41 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
 
     if (isHome) return; // Home: live filtering
 
-    // Non-home: redirect to home with query
     navigate(`/?query=${encodeURIComponent(trimmed)}`);
   };
 
-
-// web info
-const [config, setConfig] = useState(null);
-useEffect(() => {
-        const fetchConfig = async () => {
-            try {
-                const res = await api.get("/api/site-info/"); 
-                setConfig(res.data);
-            } catch (err) {
-                console.error("Footer config error:", err);
-            }
-        };
-        fetchConfig();
-    }, []);
-
-
-
+  // web info
+  const [config, setConfig] = useState(null);
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const res = await api.get("/api/site-info/");
+        setConfig(res.data);
+      } catch (err) {
+        console.error("Footer config error:", err);
+      }
+    };
+    fetchConfig();
+  }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-white shadow-md min-h-[64px]">
+    <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-md min-h-[64px] border-b border-[var(--accent)] pb-2 pt-2">
       {authPanelOpen && (
         <AuthPanel
           defaultMode={authMode}
           closePanel={() => setAuthPanelOpen(false)}
-          onLoginSuccess={handleLoginSuccess}
+          onLoginSuccess={async () => {
+            await onLoginSuccess();
+            setAuthPanelOpen(false);
+          }}
         />
       )}
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <div className="flex items-center gap-3 flex-shrink-0">
-            <a href="/">
-              <img className="h-8 w-auto" src="/VCMS.ico" alt="Logo" />
-            </a>
-            <h1 className="text-lg font-bold text-teal-900 whitespace-nowrap">
-            {config?.website_name}
-            </h1>
-          </div>
+          
 
           {/* Desktop Search */}
           <div className="hidden md:flex justify-center items-center w-full mr-1">
@@ -126,60 +92,101 @@ useEffect(() => {
               search={search}
               setSearch={setSearch}
               onSearchSubmit={handleSearchSubmit}
-              showButton={!isHome} // show button only outside home
+              showButton={!isHome}
             />
           </div>
 
           {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
+            {/* Dark mode slide toggle */}
+{isAuthenticated && (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={theme.darkMode}
+    aria-label="Toggle dark mode"
+    onClick={toggleDarkMode}
+    className="relative inline-flex items-center h-8 w-16 rounded-full transition-colors duration-300"
+    style={{ backgroundColor: theme.darkMode ? "var(--accent)" : "#d1d5db" }}
+  >
+    <span
+      className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300"
+      style={{ transform: theme.darkMode ? "translateX(34px)" : "translateX(4px)" }}
+    >
+      {theme.darkMode ? (
+        <Moon size={14} className="text-gray-700" />
+      ) : (
+        <Sun size={14} className="text-amber-500" />
+      )}
+    </span>
+  </button>
+)}
+
             {!isAuthenticated ? (
               <>
                 <button
+                  type="button"
                   onClick={() => openAuth("register")}
-                  className="w-20 rounded-full font-semibold text-xs text-gray-800 hover:text-white hover:bg-teal-300 hover:scale-105 p-2 transition transform"
+                  className="w-20 rounded-full font-semibold text-xs text-gray-800 dark:text-gray-200 hover:text-white hover:scale-105 p-2 transition transform hover:[background-color:var(--accent)]"
                 >
                   Register
                 </button>
                 <button
+                  type="button"
                   onClick={() => openAuth("login")}
-                  className="w-20 rounded-full font-semibold text-xs text-white bg-teal-600 hover:bg-teal-700 hover:scale-105 p-2 transition transform"
+                  className="w-20 rounded-full font-semibold text-xs text-white hover:scale-105 p-2 transition transform"
+                  style={{ backgroundColor: "var(--accent)" }}
                 >
                   Login
                 </button>
               </>
             ) : (
               <>
-             
-            
-              <NotificationBell/>
-                <UserMenu user={user} logout={logout} />
-            
+                <NotificationBell />
+                <UserMenu user={user} logout={logout} onOpenProfile={openProfile} />
               </>
             )}
           </div>
 
           {/* Mobile Hamburger */}
-          <div className="md:hidden">
-            <NotificationBell/>
+<div className="md:hidden flex items-center gap-2 ml-auto">
+            {isAuthenticated && (
+  <button
+    type="button"
+    role="switch"
+    aria-checked={theme.darkMode}
+    aria-label="Toggle dark mode"
+    onClick={toggleDarkMode}
+    className="relative inline-flex items-center h-7 w-14 rounded-full transition-colors duration-300"
+    style={{ backgroundColor: theme.darkMode ? "var(--accent)" : "#d1d5db" }}
+  >
+    <span
+      className="inline-flex items-center justify-center h-5 w-6 rounded-full bg-white shadow-md transform transition-transform duration-300"
+      style={{ transform: theme.darkMode ? "translateX(30px)" : "translateX(3px)" }}
+    >
+      {theme.darkMode ? (
+        <Moon size={12} className="text-gray-700" />
+      ) : (
+        <Sun size={12} className="text-amber-500" />
+      )}
+    </span>
+  </button>
+)}
+
+            <NotificationBell />
             <button
-              className="text-gray-700 hover:text-gray-900 focus:outline-none transition transform hover:scale-110"
+              type="button"
+              aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+              className="text-gray-700 dark:text-gray-200 hover:text-gray-900 focus:outline-none transition transform hover:scale-110"
               onClick={() => setMenuOpen(!menuOpen)}
             >
-              <svg
-                className="h-7 w-7"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth="2"
-                  d={
-                    menuOpen
-                      ? "M6 18L18 6M6 6l12 12"
-                      : "M4 6h16M4 12h16M4 18h16"
-                  }
+                  d={menuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
                 />
               </svg>
             </button>
@@ -199,30 +206,35 @@ useEffect(() => {
           {!isAuthenticated ? (
             <>
               <button
+                type="button"
                 onClick={() => openAuth("register")}
-                className="block w-full py-2 rounded-lg bg-gray-100 text-gray-800 font-semibold text-sm hover:bg-gray-200 transition"
+                className="block w-full py-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 font-semibold text-sm hover:bg-gray-200 dark:hover:bg-gray-700 transition"
               >
                 Register
               </button>
               <button
+                type="button"
                 onClick={() => openAuth("login")}
-                className="block w-full py-2 rounded-lg bg-teal-600 text-white font-semibold text-sm hover:bg-teal-700 transition"
+                className="block w-full py-2 rounded-lg text-white font-semibold text-sm transition"
+                style={{ backgroundColor: "var(--accent)" }}
               >
                 Login
               </button>
             </>
           ) : (
             <>
-            
-              <a
-                href="/profile/"
+              <button
+                type="button"
+                onClick={openProfile}
                 className="block w-full py-2 rounded-lg bg-amber-400 text-white font-semibold text-sm hover:bg-amber-500 transition text-center"
               >
                 Profile
-              </a>
+              </button>
               <button
+                type="button"
                 onClick={logout}
-                className="block w-full py-2 rounded-lg bg-teal-600 text-white font-semibold text-sm hover:bg-red-400 transition"
+                className="block w-full py-2 rounded-lg text-white font-semibold text-sm hover:bg-red-400 transition"
+                style={{ backgroundColor: "var(--accent)" }}
               >
                 Logout
               </button>
@@ -230,6 +242,8 @@ useEffect(() => {
           )}
         </div>
       )}
+
+      
     </header>
   );
 }

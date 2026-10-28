@@ -69,7 +69,7 @@ export default function Home() {
 
   return (
     // ✨ ADDED 'artsy-background' CLASS HERE
-   <div className="min-h-screen bg-gray-50 artsy-background">
+   <div className="min-h-screen bg-gray-50 artsy-background dark:bg-gray-900 dark:text-white">
       <TopBar search={search} setSearch={setSearch} />
 
      
@@ -78,8 +78,8 @@ export default function Home() {
     
 
         {/* Packages */}
-        <div className="flex-1 flex flex-col">
-          <h2 className="text-xl font-semibold mb-4">
+        <div className="flex-1 flex flex-col ">
+          <h2 className="text-xl font-semibold mb-4 text-black dark:text-white">
             Search results for "{search || "all"}"
           </h2>
 

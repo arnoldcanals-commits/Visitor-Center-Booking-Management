@@ -1,8 +1,10 @@
-import React, { createContext, useState, useEffect, useRef } from "react";
+import React, { createContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import api from "../api";
 import { jwtDecode } from "jwt-decode";
 
 export const AuthContext = createContext();
+
+const DEFAULT_ACCENT = "#8b5cf6";
 
 export const AuthProvider = ({ children }) => {
   const [authTokens, setAuthTokens] = useState(() => {
@@ -23,18 +25,60 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [loading, setLoading] = useState(true);
-
-  // Prevent multiple refresh attempts
   const isRefreshing = useRef(false);
 
-  // --------------------------
-  // LOGIN
-  // --------------------------
-  const login = async (credentials) => {
+  const applyTheme = useCallback(({ themeColor, darkMode } = {}) => {
+    document.documentElement.style.setProperty("--accent", themeColor || DEFAULT_ACCENT);
+    document.documentElement.classList.toggle("dark", !!darkMode);
+  }, []);
+
+  const updateDarkMode = useCallback(async (darkMode) => {
+    try {
+      const res = await api.patch(
+        "api/user/profile/",
+        { darkMode },
+        { headers: { Authorization: `Bearer ${authTokens.access}` } }
+      );
+      setUser((prev) => ({ ...prev, ...res.data }));
+      applyTheme(res.data);
+    } catch (err) {
+      console.error("Failed to update dark mode:", err);
+    }
+  }, [authTokens, applyTheme]);
+
+  const updateThemeColor = useCallback(async (themeColor) => {
+    try {
+      const res = await api.patch(
+        "api/user/profile/",
+        { themeColor },
+        { headers: { Authorization: `Bearer ${authTokens.access}` } }
+      );
+      setUser((prev) => ({ ...prev, ...res.data }));
+      applyTheme(res.data);
+    } catch (err) {
+      console.error("Failed to update theme color:", err);
+    }
+  }, [authTokens, applyTheme]);
+
+  const fetchProfile = useCallback(async (tokens) => {
+    if (!tokens?.access) return;
+    try {
+      const res = await api.get("api/user/profile/", {
+        headers: { Authorization: `Bearer ${tokens.access}` },
+      });
+      const profile = res.data;
+      setUser((prev) => ({ ...prev, ...profile }));
+      applyTheme(profile);
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+      applyTheme();
+    }
+  }, [applyTheme]);
+
+  const login = useCallback(async (credentials) => {
     try {
       const response = await api.post("api/site_admin/token/", credentials);
       const data = response.data;
-
       const decoded = jwtDecode(data.access);
 
       if (!decoded.is_admin) {
@@ -42,33 +86,31 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      setAuthTokens({ access: data.access, refresh: data.refresh });
+      const tokens = { access: data.access, refresh: data.refresh };
+      setAuthTokens(tokens);
       setUser(decoded);
 
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
+
+      await fetchProfile(tokens);
 
       return true;
     } catch (err) {
       console.error("Login error:", err);
       return false;
     }
-  };
+  }, [fetchProfile]);
 
-  // --------------------------
-  // LOGOUT
-  // --------------------------
-  const logout = () => {
+  const logout = useCallback(() => {
     setAuthTokens(null);
     setUser(null);
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
-  };
+    applyTheme();
+  }, [applyTheme]);
 
-  // --------------------------
-  // REFRESH TOKEN
-  // --------------------------
-  const refreshAccessToken = async () => {
+  const refreshAccessToken = useCallback(async () => {
     if (!authTokens?.refresh || isRefreshing.current) return false;
 
     try {
@@ -79,10 +121,9 @@ export const AuthProvider = ({ children }) => {
       });
 
       const data = response.data;
-
       const newTokens = { ...authTokens, access: data.access };
       setAuthTokens(newTokens);
-      setUser(jwtDecode(data.access));
+      setUser((prev) => ({ ...prev, ...jwtDecode(data.access) }));
 
       localStorage.setItem("access", data.access);
 
@@ -94,19 +135,14 @@ export const AuthProvider = ({ children }) => {
       logout();
       return false;
     }
-  };
+  }, [authTokens, logout]);
 
-  // --------------------------
-  // AUTO REFRESH LOOP
-  // --------------------------
   useEffect(() => {
     const interval = setInterval(() => {
       if (!authTokens) return;
-
       try {
         const decoded = jwtDecode(authTokens.access);
         const now = Date.now() / 1000;
-
         if (decoded.exp - now < 60) {
           refreshAccessToken();
         }
@@ -117,12 +153,24 @@ export const AuthProvider = ({ children }) => {
 
     setLoading(false);
     return () => clearInterval(interval);
-  }, [authTokens]);
+  }, [authTokens, refreshAccessToken, logout]);
+
+  useEffect(() => {
+    if (authTokens?.access) {
+      fetchProfile(authTokens);
+    } else {
+      applyTheme();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const value = useMemo(
+  () => ({ user, authTokens, authLoading: loading, login, logout, refreshAccessToken, fetchProfile, updateDarkMode, updateThemeColor }),
+  [user, authTokens, loading, login, logout, refreshAccessToken, fetchProfile, updateDarkMode, updateThemeColor]
+);
 
   return (
-    <AuthContext.Provider
-      value={{ user, authTokens, login, logout, refreshAccessToken }}
-    >
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );

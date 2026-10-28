@@ -19,9 +19,7 @@ export default function PaymentMethodSelector({ value, onChange }) {
 
   return (
     <div className="mt-4">
-      <label className="block text-sm font-medium text-gray-600 mb-2">
-        Payment Method
-      </label>
+      
 
       <div className="grid grid-cols-2 gap-3">
         {options.map((opt) => {
@@ -30,7 +28,7 @@ export default function PaymentMethodSelector({ value, onChange }) {
           return (
             <label
               key={opt.key}
-              className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50"
+              className="flex items-center gap-2 p-2 border rounded-lg cursor-pointer hover:bg-gray-50 text-black dark:text-white"
             >
               <input
                 type="radio"

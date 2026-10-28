@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 
-export default function UserMenu({ user, logout }) {
+export default function UserMenu({ user, logout, onOpenProfile }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -14,6 +14,11 @@ export default function UserMenu({ user, logout }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const handleProfileClick = () => {
+    setIsOpen(false);
+    onOpenProfile?.();
+  };
+
   return (
     <div className="relative flex items-center gap-3 font-['Inter',_sans-serif]" ref={menuRef}>
       {/* Welcome Text */}
@@ -21,7 +26,7 @@ export default function UserMenu({ user, logout }) {
         <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold">
           Welcome back,
         </p>
-        <p className="text-sm font-semibold text-teal-900 leading-tight">
+        <p className="text-sm font-semibold text-[var(--accent)] leading-tight">
           {user?.username}
         </p>
       </div>
@@ -56,13 +61,14 @@ export default function UserMenu({ user, logout }) {
           </div>
           
           <div className="py-1">
-            <a
-              href="/profile/"
-              className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition"
+            <button
+              type="button"
+              onClick={handleProfileClick}
+              className="flex items-center gap-2 w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-teal-50 hover:text-teal-700 transition"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
               My Profile
-            </a>
+            </button>
             
            
           </div>

@@ -1,82 +1,4 @@
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from api.models import Booking, BookingGuest
-from billing.models import Bill, BillItem
-
-
-# ----------------------------
-# Create Bill on Booking creation
-# ----------------------------
-@receiver(post_save, sender=Booking)
-def create_bill_when_booking_completed(sender, instance: Booking, created, **kwargs):
-    """
-    Create a Bill when a Booking is created, including package digest info,
-    and automatically create BillItems for each BookingGuest.
-    """
-    if not created:
-        return
-
-    # Ensure booking has a package
-    if not instance.package:
-        return
-
-    # Avoid duplicate bills
-    if hasattr(instance, "bill"):
-        return
-
-    # Create the Bill, including the digest from the package
-    bill = Bill.objects.create(
-        booking=instance,
-        base_amount=instance.package.base_price,
-        total_amount=instance.package.base_price,  # initial total, will be recalculated
-        status="draft",
-    )
-
-    # Store the package digest in the bill (optional extra field)
-    if hasattr(instance.package, "digest"):
-        # Use a special BillItem to store digest for receipt
-        BillItem.objects.create(
-            bill=bill,
-            item_type="fee",
-            description=f"Package Info: {instance.package.digest}",
-            base_amount=0,
-            discount_amount=0,
-            final_amount=0,
-        )
-
-    # Create guest-specific BillItems
-    for bg in instance.booking_guests.all():
-        BillItem.objects.create(
-            bill=bill,
-            item_type="guest",
-            booking_guest=bg,
-            base_amount=bill.base_amount,
-        )
-
-    # Recalculate total (includes guest items and fees)
-    bill.recalculate_total(commit=True)
-
-
-# ----------------------------
-# Recalculate Bill when BookingGuest changes
-# ----------------------------
-@receiver(post_save, sender=BookingGuest)
-@receiver(post_delete, sender=BookingGuest)
-def recalculate_bill_on_booking_guest_change(sender, instance, **kwargs):
-    booking = instance.booking
-    if hasattr(booking, "bill"):
-        # Update or create guest-specific BillItem if new BookingGuest added
-        if sender == BookingGuest and kwargs.get("created", False):
-            BillItem.objects.create(
-                bill=booking.bill,
-                item_type="guest",
-                booking_guest=instance,
-                base_amount=booking.bill.base_amount,
-            )
-        # Recalculate total
-        booking.bill.recalculate_total(commit=True)
-
-from django.db.models.signals import post_save
+from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from .models import Booking, Notification, User, Review, Permit
 
@@ -91,6 +13,21 @@ def notify_staff(title, message, booking=None):
             message=message,
             related_booking=booking
         )
+
+
+# Stash the pre-save value of requested_cancellation on the instance so the
+# post_save handler below can tell whether it actually changed on this save.
+@receiver(pre_save, sender=Booking)
+def stash_previous_requested_cancellation(sender, instance, **kwargs):
+    if instance.pk:
+        instance._previous_requested_cancellation = (
+            Booking.objects.filter(pk=instance.pk)
+            .values_list("requested_cancellation", flat=True)
+            .first()
+        )
+    else:
+        instance._previous_requested_cancellation = None
+
 
 @receiver(post_save, sender=Booking)
 def booking_notifications(sender, instance, created, **kwargs):
@@ -134,6 +71,45 @@ def booking_notifications(sender, instance, created, **kwargs):
                 message=f"{instance.assigned_guide.username} has been assigned as your guide!",
                 related_booking=instance
             )
+
+    # 4. CANCELLATION REQUEST TOGGLED (Notify Tourist + Staff)
+    previous_requested_cancellation = getattr(
+        instance, "_previous_requested_cancellation", None
+    )
+    cancellation_flag_changed = (
+        not created
+        and previous_requested_cancellation is not None
+        and previous_requested_cancellation != instance.requested_cancellation
+    )
+
+    if cancellation_flag_changed:
+        if instance.requested_cancellation:
+            Notification.objects.create(
+                user=instance.tourist,
+                notification_type="booking",
+                title="Cancellation Requested",
+                message=f"Booking #{instance.id} has been requested for cancellation.",
+                related_booking=instance
+            )
+            notify_staff(
+                title="Cancellation Requested",
+                message=f"Booking #{instance.id} has been requested for cancellation.",
+                booking=instance
+            )
+        else:
+            Notification.objects.create(
+                user=instance.tourist,
+                notification_type="booking",
+                title="Cancellation Rescinded",
+                message=f"Booking #{instance.id} request for cancellation rescinded.",
+                related_booking=instance
+            )
+            notify_staff(
+                title="Cancellation Rescinded",
+                message=f"Booking #{instance.id} request for cancellation rescinded.",
+                booking=instance
+            )
+
 
 @receiver(post_save, sender=Permit)
 def permit_notifications(sender, instance, created, **kwargs):

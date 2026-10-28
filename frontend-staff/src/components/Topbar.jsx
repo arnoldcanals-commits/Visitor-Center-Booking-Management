@@ -1,11 +1,14 @@
 import { useLocation } from "react-router-dom";
 import { useEffect, useState, useRef, useContext } from "react";
-import { FiBell, FiCalendar, FiLogOut } from "react-icons/fi";
+import { Calendar as CalendarIcon, LogOut, ChevronDown, User, Sun, Moon } from "lucide-react";
 
 import { StaffDataContext } from "../contexts/StaffDataContext";
 import { TourGuideDataContext } from "../contexts/TourGuideDataContext";
 import { StationContext } from "../contexts/StationStaffDataContext";
+import { AuthContext } from "../contexts/AuthContext";
 import NotificationBell from "./Notifications";
+import Profile from "./Profile";
+import api from "../api";
 // Big Calendar
 import {
   Calendar as BigCalendar,
@@ -18,6 +21,40 @@ import getDay from "date-fns/getDay";
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
 
+function DarkModeSwitch() {
+  const { user, updateDarkMode } = useContext(AuthContext);
+  const [toggling, setToggling] = useState(false);
+
+  const isDark = !!user?.darkMode;
+
+  const handleToggle = async () => {
+    if (toggling) return;
+    setToggling(true);
+    await updateDarkMode(!isDark);
+    setToggling(false);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      disabled={toggling}
+      aria-label="Toggle dark mode"
+      className={`relative w-11 h-6 rounded-full transition-colors duration-300 disabled:opacity-60 ${
+        isDark ? "bg-[var(--accent)]" : "bg-gray-300"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow flex items-center justify-center transition-transform duration-300 ${
+          isDark ? "translate-x-5" : "translate-x-0"
+        }`}
+      >
+        {isDark ? <Moon size={11} className="text-[var(--accent)]" /> : <Sun size={11} className="text-gray-400" />}
+      </span>
+    </button>
+  );
+}
+
 export default function TopBar() {
   const location = useLocation();
 
@@ -25,6 +62,7 @@ export default function TopBar() {
   const staffCtx = useContext(StaffDataContext);
   const guideCtx = useContext(TourGuideDataContext);
   const stationCtx = useContext(StationContext);
+  const { user, authTokens } = useContext(AuthContext);
 
   /**
    * AUTO-DETECT ACTIVE ROLE
@@ -34,27 +72,23 @@ export default function TopBar() {
   const isStation = !!stationCtx?.stationData;
   const isGuide = !!guideCtx?.guideData;
 
-  // Only staff & guide have notifications / bookings
+  // Only staff & guide have bookings for the calendar
   const activeData = isStaff
     ? staffCtx.staffData
     : isGuide
     ? guideCtx.guideData
     : null;
 
-  const updateItem = isStaff
-    ? staffCtx.updateItem
-    : isGuide
-    ? guideCtx.updateItem
-    : null;
-
   const [pageTitle, setPageTitle] = useState("Dashboard");
-  const [showNotif, setShowNotif] = useState(false);
   const [showCalendar, setShowCalendar] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [calendarView, setCalendarView] = useState("month");
+  const [fullProfile, setFullProfile] = useState(null);
 
-  const notifRef = useRef(null);
   const calendarRef = useRef(null);
+  const profileRef = useRef(null);
 
   const localizer = dateFnsLocalizer({
     format,
@@ -64,161 +98,158 @@ export default function TopBar() {
     locales: { "en-US": enUS },
   });
 
-  // --------------------------------------------------
-  // PAGE TITLE
-  // --------------------------------------------------
   useEffect(() => {
     const path = location.pathname.split("/").filter(Boolean).pop();
-    setPageTitle(
-      path ? path.charAt(0).toUpperCase() + path.slice(1) : "Dashboard"
-    );
+    setPageTitle(path ? path.charAt(0).toUpperCase() + path.slice(1) : "Dashboard");
   }, [location.pathname]);
 
-  // --------------------------------------------------
-  // STAFF / GUIDE DATA
-  // --------------------------------------------------
-  const notifications = activeData?.notifications || [];
-  const bookings = activeData?.bookings || [];
-
-  const unreadCount = notifications.filter((n) => !n.read).length;
-
-  // --------------------------------------------------
-  // CLICK OUTSIDE HANDLERS
-  // --------------------------------------------------
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotif(false);
-      }
-      if (calendarRef.current && !calendarRef.current.contains(e.target)) {
-        setShowCalendar(false);
-      }
+    const handleClickOutside = (event) => {
+      if (calendarRef.current && !calendarRef.current.contains(event.target)) setShowCalendar(false);
+      if (profileRef.current && !profileRef.current.contains(event.target)) setShowProfileMenu(false);
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () =>
-      document.removeEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --------------------------------------------------
-  // NOTIFICATION READ
-  // --------------------------------------------------
-  const handleNotifClick = async (notif) => {
-    if (!notif.read && updateItem) {
-      await updateItem("notifications", notif.id, { read: true });
-    }
-  };
+  // Fetch the full user record from the backend — the JWT only carries minimal
+  // claims (user_id, role, exp...), not things like profile_picture.
+  useEffect(() => {
+    if (!authTokens?.access) return;
 
-  // --------------------------------------------------
-  // CALENDAR EVENTS (STAFF & GUIDE ONLY)
-  // --------------------------------------------------
+    api
+      .get("api/user/profile/", {
+        headers: { Authorization: `Bearer ${authTokens.access}` },
+      })
+      .then((res) => setFullProfile(res.data))
+      .catch((err) => console.error("Failed to fetch profile:", err));
+  }, [authTokens?.access]);
+
+  const bookings = activeData?.bookings || [];
+
   const events = bookings.map((b) => ({
-    title:
-      b.tour_package?.name ||
-      b.tourist_name ||
-      "Booking",
+    title: b.tour_package?.name || b.tourist_name || "Booking",
     start: b.check_in ? new Date(b.check_in) : new Date(),
     end: b.check_out ? new Date(b.check_out) : new Date(),
     allDay: false,
   }));
 
-  return (
-    <div className="sticky top-0 z-50 bg-white border-b border-teal-300 px-4 sm:px-6 py-2 flex items-center justify-between shadow-md">
-      {/* Page Title */}
-      <div className="text-lg font-semibold text-teal-600 tracking-wide">
-        {pageTitle}
-      </div>
+  // Prefer the fetched profile (has profile_picture); fall back to the decoded JWT
+  const username =
+    fullProfile?.username || fullProfile?.first_name || user?.username || user?.name || user?.email || "Staff";
+  const profilePicture =
+    fullProfile?.profile_picture ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=0d9488&color=fff`;
 
-      {/* Controls */}
+  return (
+    <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-[var(--accent)] px-4 sm:px-6 py-3 flex items-center justify-between shadow-md">
+      <div className="text-lg font-semibold text-[var(--accent)] tracking-wide">{pageTitle}</div>
+
       <div className="flex items-center space-x-3 sm:space-x-4 relative">
         {/* Calendar (STAFF & GUIDE ONLY) */}
         {(isStaff || isGuide) && (
           <div className="relative" ref={calendarRef}>
             <button
-              onClick={() => setShowCalendar((v) => !v)}
-              className="text-teal-600 hover:text-teal-700 p-2 rounded-full transition"
+              onClick={() => setShowCalendar(!showCalendar)}
+              className="text-[var(--accent)] hover:text-gray-700 dark:hover:text-gray-300 p-2 rounded-full transition transform hover:scale-110"
             >
-              <FiCalendar size={22} />
+              <CalendarIcon size={22} />
             </button>
-
             {showCalendar && (
-              <div className="absolute right-0 mt-2 z-50 w-[90vw] md:w-96 bg-white border border-teal-300 rounded-lg shadow-lg p-2 animate-scaleDown">
-                <BigCalendar
-                  localizer={localizer}
-                  events={events}
-                  startAccessor="start"
-                  endAccessor="end"
-                  date={calendarDate}
-                  view={calendarView}
-                  onNavigate={setCalendarDate}
-                  onView={setCalendarView}
-                  views={["month", "week", "day"]}
-                  style={{ height: 350 }}
-                  popup
-                />
+              <div className="absolute right-0 mt-2 z-50 w-[90vw] md:w-96 bg-white dark:bg-gray-800 border border-[var(--accent)] rounded-lg shadow-lg p-2 animate-scaleDown">
+                <div className="dark:text-gray-100">
+                  <BigCalendar
+                    localizer={localizer}
+                    events={events}
+                    startAccessor="start"
+                    endAccessor="end"
+                    date={calendarDate}
+                    view={calendarView}
+                    onNavigate={setCalendarDate}
+                    onView={setCalendarView}
+                    views={["month", "week", "day"]}
+                    style={{ height: 350 }}
+                  />
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Notifications (STAFF & GUIDE ONLY) */}
-        {(isStaff || isGuide) && (
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={() => setShowNotif((v) => !v)}
-              className="relative text-teal-600 hover:text-teal-700 p-2 rounded-full transition"
-            >
-              <FiBell size={22} />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-xs w-4 h-4 flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </button>
+        <NotificationBell />
 
-            {showNotif && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white border border-gray-200 rounded-md shadow-lg z-50 animate-scaleDown max-h-96 overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <div className="p-3 text-gray-500 text-sm">
-                    No notifications
-                  </div>
-                ) : (
-                  notifications.map((notif) => (
-                    <div
-                      key={notif.id}
-                      onClick={() => handleNotifClick(notif)}
-                      className={`p-3 border-b last:border-b-0 text-sm cursor-pointer ${
-                        notif.read
-                          ? "text-gray-400"
-                          : "text-gray-700 font-medium"
-                      } hover:bg-teal-50`}
-                    >
-                      {notif.message}
-                    </div>
-                  ))
-                )}
+        {/* Dark mode */}
+        <DarkModeSwitch />
+
+        {/* Profile */}
+        <div className="relative" ref={profileRef}>
+          <button
+            onClick={() => setShowProfileMenu(!showProfileMenu)}
+            className="flex items-center gap-1 rounded-full transition transform hover:scale-105"
+          >
+            <img
+              src={profilePicture}
+              alt={username}
+              className="w-11 h-11 rounded-full object-cover border-2 border-[var(--accent)]"
+            />
+            <ChevronDown
+              size={16}
+              className={`text-[var(--accent)] transition-transform ${showProfileMenu ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {showProfileMenu && (
+            <div className="absolute right-0 mt-2 z-50 w-48 bg-white dark:bg-gray-800 border border-[var(--accent)] rounded-lg shadow-lg py-1 animate-scaleDown">
+              <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{username}</p>
               </div>
-            )}
-          </div>
-        )}
-        <NotificationBell/>
-        {/* Logout */}
-        <a
-          href="/logout"
-          className="hidden md:flex items-center text-white bg-teal-500 hover:bg-teal-600 px-3 py-1 rounded-md font-medium shadow-md"
-        >
-          Logout
-        </a>
-        <a
-          href="/logout"
-          className="md:hidden flex items-center text-white bg-teal-500 hover:bg-teal-600 p-2 rounded-full shadow-md"
-        >
-          <FiLogOut size={20} />
-        </a>
+
+              <button
+                onClick={() => {
+                  setShowProfileMenu(false);
+                  setShowProfileModal(true);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-gray-700 hover:text-[var(--accent)] transition"
+              >
+                <User size={16} />
+                Profile
+              </button>
+
+              
+              <a  href="/logout"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-gray-700 hover:text-[var(--accent)] transition"
+              >
+                <LogOut size={16} />
+                Sign out
+              </a>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Animation */}
+      {showProfileModal && (
+        <Profile
+          onClose={() => {
+            setShowProfileModal(false);
+            // refresh topbar avatar/username in case they were just changed
+            if (authTokens?.access) {
+              api
+                .get("api/user/profile/", { headers: { Authorization: `Bearer ${authTokens.access}` } })
+                .then((res) => setFullProfile(res.data))
+                .catch(() => {});
+            }
+          }}
+        />
+      )}
+
       <style>{`
+        @keyframes fadeIn {
+          0% { opacity: 0; transform: translateY(-8px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.15s ease-out forwards;
+        }
         @keyframes scaleDown {
           0% { transform: scaleY(0); opacity: 0; }
           100% { transform: scaleY(1); opacity: 1; }

@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils import timezone
-from api.models import Booking, BookingGuest
+from api.models import Booking, BookingGuest, BaseModel
 import uuid, os
 import logging
 
@@ -25,7 +25,7 @@ class BillTemplate(models.Model):
         return self.name
 
 
-class FeeType(models.Model):
+class FeeType(BaseModel):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True, null=True)
     default_amount = models.DecimalField(max_digits=10, decimal_places=2)

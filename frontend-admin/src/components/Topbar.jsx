@@ -1,9 +1,9 @@
 import { useLocation } from "react-router-dom";
 import { useEffect, useState, useRef, useContext, useMemo } from "react";
-import { Bell, Calendar as CalendarIcon, LogOut, ChevronDown, User } from "lucide-react";
+import { Bell, Calendar as CalendarIcon, LogOut, ChevronDown, User, Sun, Moon } from "lucide-react";
 import { AdminDataContext } from "../contexts/AdminDataContext";
 import { AuthContext } from "../contexts/AuthContext"; // Import AuthContext
-
+import { Link } from "react-router-dom";
 import NotificationBell from "./Notifications";
 import Profile from "./Profile";
 import api from "../api";
@@ -15,6 +15,42 @@ import startOfWeek from "date-fns/startOfWeek";
 import getDay from "date-fns/getDay";
 import enUS from "date-fns/locale/en-US";
 import "react-big-calendar/lib/css/react-big-calendar.css";
+
+
+function DarkModeSwitch() {
+  const { user, authTokens, updateDarkMode } = useContext(AuthContext);
+  const [toggling, setToggling] = useState(false);
+
+  const isDark = !!user?.darkMode;
+
+  const handleToggle = async () => {
+    if (toggling) return;
+    setToggling(true);
+    await updateDarkMode(!isDark);
+    setToggling(false);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleToggle}
+      disabled={toggling}
+      aria-label="Toggle dark mode"
+      className={`relative w-11 h-6 rounded-full transition-colors duration-300 disabled:opacity-60 ${
+        isDark ? "bg-[var(--accent)]" : "bg-gray-300"
+      }`}
+    >
+      <span
+        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow flex items-center justify-center transition-transform duration-300 ${
+          isDark ? "translate-x-5" : "translate-x-0"
+        }`}
+      >
+        {isDark ? <Moon size={11} className="text-[var(--accent)]" /> : <Sun size={11} className="text-gray-400" />}
+      </span>
+    </button>
+  );
+}
+
 
 export default function TopBar() {
   const location = useLocation();
@@ -101,37 +137,42 @@ export default function TopBar() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=0d9488&color=fff`;
 
   return (
-    <div className="sticky top-0 z-50 bg-white border-b border-violet-300 px-4 sm:px-6 py-3 flex items-center justify-between shadow-md">
-      <div className="text-lg font-semibold text-violet-600 tracking-wide">{pageTitle}</div>
+    <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-[var(--accent)] px-4 sm:px-6 py-3 flex items-center justify-between shadow-md">
+      <div className="text-lg font-semibold text-[var(--accent)] tracking-wide">{pageTitle}</div>
 
       <div className="flex items-center space-x-3 sm:space-x-4 relative">
         {/* Calendar */}
         <div className="relative" ref={calendarRef}>
           <button
             onClick={() => setShowCalendar(!showCalendar)}
-            className="text-violet-600 hover:text-violet-700 p-2 rounded-full transition transform hover:scale-110"
+            className="text-[var(--accent)] hover:text-gray-700 dark:hover:text-gray-300 p-2 rounded-full transition transform hover:scale-110"
           >
             <CalendarIcon size={22} />
           </button>
           {showCalendar && (
-            <div className="absolute right-0 mt-2 z-50 w-[90vw] md:w-96 bg-white border border-violet-300 rounded-lg shadow-lg p-2 animate-scaleDown">
-              <BigCalendar
-                localizer={localizer}
-                events={events}
-                startAccessor="start"
-                endAccessor="end"
-                date={calendarDate}
-                view={calendarView}
-                onNavigate={setCalendarDate}
-                onView={setCalendarView}
-                views={["month", "week", "day"]}
-                style={{ height: 350 }}
-              />
+            <div className="absolute right-0 mt-2 z-50 w-[90vw] md:w-96 bg-white dark:bg-gray-800 border border-[var(--accent)] rounded-lg shadow-lg p-2 animate-scaleDown">
+              <div className="dark:text-gray-100">
+                <BigCalendar
+                  localizer={localizer}
+                  events={events}
+                  startAccessor="start"
+                  endAccessor="end"
+                  date={calendarDate}
+                  view={calendarView}
+                  onNavigate={setCalendarDate}
+                  onView={setCalendarView}
+                  views={["month", "week", "day"]}
+                  style={{ height: 350 }}
+                />
+              </div>
             </div>
           )}
         </div>
 
         <NotificationBell />
+        
+        {/* Dark mode */}
+        <DarkModeSwitch />
 
         {/* Profile */}
         <div className="relative" ref={profileRef}>
@@ -142,18 +183,18 @@ export default function TopBar() {
             <img
               src={profilePicture}
               alt={username}
-              className="w-11 h-11 rounded-full object-cover border-2 border-[#8B6FCB]"
+              className="w-11 h-11 rounded-full object-cover border-2 border-[var(--accent)]"
             />
             <ChevronDown
               size={16}
-              className={`text-[#8B6FCB] transition-transform ${showProfileMenu ? "rotate-180" : ""}`}
+              className={`text-[var(--accent)] transition-transform ${showProfileMenu ? "rotate-180" : ""}`}
             />
           </button>
 
           {showProfileMenu && (
-            <div className="absolute right-0 mt-2 z-50 w-48 bg-white border border-[#8B6FCB] rounded-lg shadow-lg py-1 animate-scaleDown">
-              <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-700 truncate">{username}</p>
+            <div className="absolute right-0 mt-2 z-50 w-48 bg-white dark:bg-gray-800 border border-[var(--accent)] rounded-lg shadow-lg py-1 animate-scaleDown">
+              <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200 truncate">{username}</p>
               </div>
 
               <button
@@ -161,19 +202,19 @@ export default function TopBar() {
                   setShowProfileMenu(false);
                   setShowProfileModal(true);
                 }}
-                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-600 transition"
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-gray-700 hover:text-[var(--accent)] transition"
               >
                 <User size={16} />
                 Profile
               </button>
 
-              <a
-                href="/logout"
-                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-violet-50 hover:text-violet-600 transition"
-              >
-                <LogOut size={16} />
-                Sign out
-              </a>
+            <Link
+  to="/logout"
+  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-gray-700 hover:text-[var(--accent)] transition"
+>
+  <LogOut size={16} />
+  Sign out
+</Link>
             </div>
           )}
         </div>

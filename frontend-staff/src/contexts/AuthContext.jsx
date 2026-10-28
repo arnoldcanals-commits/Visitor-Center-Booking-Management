@@ -5,6 +5,7 @@ import { jwtDecode } from "jwt-decode";
 export const AuthContext = createContext();
 
 const STAFF_ROLES = ["tour_guide", "staff", "station_staff", "admin"];
+const DEFAULT_ACCENT = "#8b5cf6";
 
 // Returns true/false if we can determine expiry, or null if the token
 // isn't a decodable JWT / has no exp claim (treat as "unknown").
@@ -25,12 +26,36 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const isRefreshing = useRef(false);
 
+  // ================= THEME =================
+  const applyTheme = ({ themeColor, darkMode } = {}) => {
+    document.documentElement.style.setProperty("--accent", themeColor || DEFAULT_ACCENT);
+    document.documentElement.classList.toggle("dark", !!darkMode);
+  };
+
   // ================= LOGOUT =================
   const logout = () => {
     setAuthTokens(null);
     setUser(null);
     localStorage.removeItem("access");
     localStorage.removeItem("refresh");
+    applyTheme(); // reset to default accent/light mode
+  };
+
+  // ================= FETCH PROFILE (themeColor, darkMode, etc.) =================
+  const fetchProfile = async (tokens) => {
+    if (!tokens?.access) return;
+    try {
+      const res = await api.get("api/user/profile/", {
+        headers: { Authorization: `Bearer ${tokens.access}` },
+      });
+      const profile = res.data;
+
+      setUser((prev) => ({ ...prev, ...profile }));
+      applyTheme(profile);
+    } catch (err) {
+      console.error("Failed to fetch profile:", err);
+      applyTheme(); // fall back to defaults if profile fetch fails
+    }
   };
 
   // ================= LOGIN =================
@@ -44,11 +69,14 @@ export const AuthProvider = ({ children }) => {
         return null;
       }
 
-      setAuthTokens({ access: data.access, refresh: data.refresh });
+      const tokens = { access: data.access, refresh: data.refresh };
+      setAuthTokens(tokens);
       setUser({ ...jwtDecode(data.access), ...data });
 
       localStorage.setItem("access", data.access);
       localStorage.setItem("refresh", data.refresh);
+
+      await fetchProfile(tokens);
 
       return data;
     } catch (err) {
@@ -76,7 +104,7 @@ export const AuthProvider = ({ children }) => {
 
       const newTokens = { access: data.access, refresh: tokens.refresh };
       setAuthTokens(newTokens);
-      setUser(decoded);
+      setUser((prev) => ({ ...prev, ...decoded }));
       localStorage.setItem("access", data.access);
 
       isRefreshing.current = false;
@@ -86,6 +114,36 @@ export const AuthProvider = ({ children }) => {
       isRefreshing.current = false;
       logout();
       return false;
+    }
+  };
+
+  // ================= UPDATE DARK MODE =================
+  const updateDarkMode = async (darkMode) => {
+    try {
+      const res = await api.patch(
+        "api/user/profile/",
+        { darkMode },
+        { headers: { Authorization: `Bearer ${authTokens.access}` } }
+      );
+      setUser((prev) => ({ ...prev, ...res.data }));
+      applyTheme(res.data);
+    } catch (err) {
+      console.error("Failed to update dark mode:", err);
+    }
+  };
+
+  // ================= UPDATE THEME COLOR =================
+  const updateThemeColor = async (themeColor) => {
+    try {
+      const res = await api.patch(
+        "api/user/profile/",
+        { themeColor },
+        { headers: { Authorization: `Bearer ${authTokens.access}` } }
+      );
+      setUser((prev) => ({ ...prev, ...res.data }));
+      applyTheme(res.data);
+    } catch (err) {
+      console.error("Failed to update theme color:", err);
     }
   };
 
@@ -111,11 +169,13 @@ export const AuthProvider = ({ children }) => {
       }
 
       const accessExpired = getExpiryStatus(access);
+      const tokens = { access, refresh };
 
       if (accessExpired === false) {
         // Access token still valid, trust it.
-        setAuthTokens({ access, refresh });
+        setAuthTokens(tokens);
         setUser(jwtDecode(access));
+        await fetchProfile(tokens);
         setLoading(false);
         return;
       }
@@ -123,9 +183,9 @@ export const AuthProvider = ({ children }) => {
       // Access token expired, missing exp, or corrupt -> try to refresh.
       // If refresh itself fails (invalid/expired on the server), refreshAccessToken
       // calls logout() for us.
-      const ok = await refreshAccessToken({ access, refresh });
-      if (!ok) {
-        // logout() already called inside refreshAccessToken
+      const ok = await refreshAccessToken(tokens);
+      if (ok) {
+        await fetchProfile({ access: localStorage.getItem("access"), refresh });
       }
       setLoading(false);
     };
@@ -172,6 +232,9 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         refreshAccessToken,
+        fetchProfile,
+        updateDarkMode,
+        updateThemeColor,
         isTourGuide,
         isBookingStaff,
         isStationStaff,

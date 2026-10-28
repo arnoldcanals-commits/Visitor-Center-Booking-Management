@@ -1,5 +1,6 @@
 import moment from "moment";
 import { useContext } from "react";
+import { Clock } from "lucide-react";
 import { AdminDataContext } from "../../contexts/AdminDataContext";
 import { Link } from "react-router-dom";
 
@@ -47,7 +48,7 @@ export default function BookingTable({
   return (
     <div className="space-y-4">
       {/* Desktop Header - Hidden on Mobile */}
-      <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 text-[11px] uppercase tracking-wider font-bold text-gray-400 rounded-xl">
+      <div className="dark:bg-gray-800 hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 text-[11px] uppercase tracking-wider font-bold text-gray-400 rounded-xl">
         <div className="col-span-1 flex justify-center">
           <input
             type="checkbox"
@@ -72,11 +73,14 @@ export default function BookingTable({
           const isUnread = b.read_byStaff === false;
           const isSelected = selectedIds.includes(b.id);
           const statusMeta = statusChoices.find((s) => s.value === b.status);
+          const showCancellationRequestIcon =
+            b.requested_cancellation &&
+            !["completed", "cancelled", "rejected"].includes(b.status);
 
           return (
             <div
               key={b.id}
-              className={`relative bg-white border rounded-2xl p-4 md:p-0 shadow-sm transition-all duration-200 
+              className={`relative bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-2xl p-4 md:p-0 shadow-sm transition-all duration-200 
                 ${isSelected ? "ring-2 ring-blue-500 bg-blue-50/30" : "border-gray-100 hover:shadow-md"}
                 ${isArchived ? "opacity-75 grayscale-[0.3]" : ""}
               `}
@@ -103,7 +107,7 @@ export default function BookingTable({
 
                 {/* 2. Tourist Info */}
                 <div className="col-span-3 mb-3 md:mb-0">
-                  <p className={`text-base md:text-sm leading-tight ${isUnread ? "font-bold text-gray-900" : "text-gray-700"}`}>
+                  <p className={`text-base md:text-sm leading-tight ${isUnread ? "font-bold text-gray-900 dark:text-white" : "text-gray-700 dark:text-white"}`}>
                     {b.tourist_name || b.tourist}
                   </p>
                   <p className="text-[10px] font-mono text-gray-400 mt-1 uppercase flex items-center gap-1">
@@ -119,23 +123,23 @@ export default function BookingTable({
 
                 {/* 3. Dates - check-in green, check-out purple */}
                 <div className="col-span-2 flex flex-wrap gap-2 mb-3 md:mb-0">
-                  <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium">
+                  <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-medium dark:bg-green-700 dark:text-green-100">
                     {b.check_in ? moment(b.check_in).format("MMM DD") : "—"}
                   </div>
-                  <div className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium">To</div>
-                  <div className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium">
+                  <div className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-medium dark:bg-gray-700 dark:text-gray-100">To</div>
+                  <div className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-medium dark:bg-purple-700 dark:text-purple-100">
                     {b.check_out ? moment(b.check_out).format("MMM DD") : "—"}
                   </div>
                 </div>
 
                 {/* 4. Package & Event */}
                 <div className="col-span-2 mb-3 md:mb-0">
-                  <p className="text-xs font-semibold text-gray-800">{b.package_name || "Custom"}</p> 
+                  <p className="text-xs font-semibold text-gray-800 dark:text-white">{b.package_name || "Custom"}</p> 
                   <button
                     disabled={isArchived}
                     onClick={() => { markAsRead(b); openAssignEvent(b); }}
                     className={`text-[9px] mt-1 px-2 py-0.5 rounded-full border transition-all ${
-                        b.event ? "bg-green-50 border-green-100 text-green-600" : "bg-pink-50 border-pink-100 text-pink-600"
+                        b.event ? "bg-green-50 border-green-100 text-green-600" : "bg-pink-50 border-pink-100 text-pink-600 dark:bg-pink-600 dark:text-pink-50 dark:border-pink-800"
                     }`}
                   >
                     {b.event ? "✓ Linked" : "+ Link Event"}
@@ -151,11 +155,22 @@ export default function BookingTable({
                   >
                     {statusMeta?.label || b.status}
                   </span>
+                  {showCancellationRequestIcon && (
+                    <span className="relative group inline-flex items-center justify-center">
+                      <Clock
+                        size={14}
+                        className="text-amber-500 dark:text-amber-400 animate-pulse drop-shadow-[0_0_6px_rgba(245,158,11,0.85)]"
+                      />
+                      <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 whitespace-nowrap rounded-md bg-gray-900 text-white text-[10px] font-medium px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        Requested cancellation
+                      </span>
+                    </span>
+                  )}
                   <select
                     value={b.status}
                     disabled={isArchived}
                     onChange={(e) => { markAsRead(b); handleStatusChange(b.id, e.target.value); }}
-                    className="text-[11px] px-4 py-1 rounded-lg border border-gray-300 bg-white text-gray-700 font-medium shadow-sm outline-none focus:border-blue-500"
+                    className="text-[11px] px-4 py-1 rounded-lg dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 border border-gray-300 bg-white text-gray-700 font-medium shadow-sm outline-none focus:border-blue-500"
                   >
                     {statusChoices.map((s) => (
                       <option key={s.value} value={s.value}>{s.label}</option>

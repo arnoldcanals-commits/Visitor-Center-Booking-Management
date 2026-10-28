@@ -88,6 +88,8 @@ class AdminUserSerializer(AdminBaseSerializer):
             "last_login",
             "is_superuser",
             "is_staff",
+            "is_email_verified"
+            ,
         ]
 
 

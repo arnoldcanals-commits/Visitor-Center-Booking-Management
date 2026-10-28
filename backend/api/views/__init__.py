@@ -11,3 +11,5 @@ from .guest_views import *
 from .notif_views import *
 from .reviews_views import *
 from .admin_dashboard_view import *
+from .admin_user_viewset import *
+from .admin_user_viewset import *

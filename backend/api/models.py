@@ -78,7 +78,10 @@ class User(AbstractUser, BaseModel):
         ("tour_guide", "Tour Guide"),
         ("staff", "Staff"),
         ("station_staff", "Station Staff"),
+        ("driver", "Driver"),
+        ("ranger", "Ranger"),
         ("admin", "Admin"),
+        
     ]
 
     STATUS_CHOICES = [
@@ -94,6 +97,8 @@ class User(AbstractUser, BaseModel):
         blank=True,
         null=True
 )
+    darkMode=models.BooleanField(default=False)
+    themeColor=models.CharField(default="#3b82f6")
 
     phone_number = models.CharField(
         max_length=15,
@@ -142,6 +147,7 @@ class PermitType(BaseModel):
     def __str__(self):
         return self.name
 
+
 # =====================================================
 # TourPackage & Images
 # =====================================================
@@ -156,6 +162,27 @@ class TourPackage(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+
+# =====================================================
+# Activities (per TourPackage)
+# =====================================================
+class Activity(BaseModel):
+    package = models.ForeignKey(
+        TourPackage,
+        on_delete=models.CASCADE,
+        related_name="activities"
+    )
+    name = models.CharField(max_length=150)
+    description = models.TextField(blank=True, null=True)
+    extra_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.package.name})"
+
+
 
 class TourPackageImage(BaseModel):
     package = models.ForeignKey(
@@ -342,7 +369,7 @@ class Booking(BaseModel):
     booking_date = models.DateTimeField(auto_now_add=True) 
     status = models.CharField( max_length=20, choices=STATUS_CHOICES, default="pending" ) 
     assigned_guide = models.ForeignKey( settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_bookings", limit_choices_to={"role": "tour_guide"}, editable=False) 
-   
+    requested_cancellation=models.BooleanField(default=False)
     
     read_byStaff =models.BooleanField(default=False)
     read_byGuide=models.BooleanField(default=False)
@@ -353,6 +380,13 @@ class Booking(BaseModel):
         blank=True,
         editable=False
     )
+
+    selected_activities = models.ManyToManyField(
+        Activity,
+        blank=True,
+        related_name="bookings"
+    )
+
     @property
     def guests(self):
         return [
@@ -385,6 +419,12 @@ class Booking(BaseModel):
                 "Booking itinerary must come from its event."
             )
 
+        if self.pk and self.package:
+            invalid = self.selected_activities.exclude(package=self.package)
+            if invalid.exists():
+                raise ValidationError(
+                    "Selected activities must belong to the booked package."
+                )
 
     def auto_update_status(self):
         now = timezone.now()
@@ -957,4 +997,3 @@ class Information(BaseModel):
 
     def __str__(self):
         return f"{self.category} → {self.sub_category or 'General'}: {self.title}"
-

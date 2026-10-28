@@ -219,7 +219,7 @@ export default function StationDashboard() {
   if (!canScan) return <div className="p-10 text-center">Access Restricted</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pt-12 pb-10 px-4">
+    <div className="min-h-screen bg-gray-50/50 pt-12 pb-10 px-4 dark:bg-gray-900">
       <div className="max-w-xl mx-auto space-y-6">
         
         {toast && (
@@ -237,27 +237,27 @@ export default function StationDashboard() {
         )}
 
         {/* Station Info */}
-        <div className="bg-white border rounded-2xl p-5 shadow-sm flex items-center justify-between">
+        <div className="bg-white border-gray-900 rounded-2xl p-5 shadow-sm flex items-center justify-between dark:bg-gray-900 text-black dark:text-white dark:border-gray-800">
           <div>
-            <p className="text-[10px] uppercase text-teal-600 font-bold">Station</p>
+            <p className="text-[10px] uppercase text-[var(--accent)] font-bold">Station</p>
             <h1 className="text-xl font-black">{station?.name}</h1>
           </div>
-          <FiCheckCircle className="text-teal-600" size={24}/>
+          <FiCheckCircle className="text-[var(--accent)]" size={24}/>
         </div>
 
         {/* Action Buttons */}
         <div className="grid grid-cols-4 gap-3">
           <button
             onClick={() => setScannerOpen(true)}
-            className="col-span-3 bg-teal-600 text-white font-bold py-4 rounded-2xl shadow-md flex items-center justify-center gap-2"
+            className="col-span-3 bg-[var(--accent)] text-white font-bold py-4 rounded-2xl shadow-md flex items-center justify-center gap-2"
           >
-            <FiCamera size={22} /> Start QR Scan
+            <FiCamera size={22}  /> Start QR Scan
           </button>
           <button
             onClick={() => { getCoordinates().catch(()=>{}); fileInputRef.current.click(); }}
-            className="col-span-1 border-2 border-gray-200 bg-white rounded-2xl flex items-center justify-center"
+            className="col-span-1 border-2 border-gray-200 bg-white rounded-2xl flex items-center justify-center dark:bg-gray-900 dark:border-gray-800"
           >
-            <FiUpload size={22} />
+            <FiUpload className="text-[var(--accent)]" size={22} />
           </button>
           <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleImageUpload} />
         </div>
@@ -275,12 +275,12 @@ export default function StationDashboard() {
         )}
 
         {/* Activity List */}
-        <div className="bg-white border rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b bg-gray-50/50 font-bold text-gray-700">Recent Activity</div>
+        <div className="bg-white border rounded-2xl shadow-sm overflow-hidden dark:bg-gray-900 dark:text-white text-gray-700 dark:border-gray-800 border-gray-200">
+          <div className="px-5 py-4 border-b bg-gray-50/50 font-bold text-gray-700 dark:bg-gray-900 dark:text-white dark:border-gray-800 border-gray-200">Recent Activity</div>
           {loading ? (
-            <div className="p-10 text-center text-gray-400">Loading...</div>
+            <div className="p-10 text-center text-gray-400 dark:text-white">Loading...</div>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-gray-100 dark:divide-gray-800">
               {recentScans.slice(0, 6).map((scan) => (
                 <li
                   key={scan.id}

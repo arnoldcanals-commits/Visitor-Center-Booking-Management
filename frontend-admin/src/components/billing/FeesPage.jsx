@@ -1,6 +1,7 @@
 // src/pages/Fees.jsx
 import { useContext, useState } from "react";
 import { AdminBillingContext } from "../../contexts/AdminBillingContext";
+import { AuthContext } from "../../contexts/AuthContext";
 import FeesModal from "./FeesModal";
 export default function Fees() {
   const { fees, getFeeById } = useContext(AdminBillingContext);
@@ -33,10 +34,10 @@ export default function Fees() {
       </div>
 
       {/* Fees Table */}
-      <div className="overflow-x-auto bg-white shadow rounded-xl p-4">
+      <div className="overflow-x-auto bg-white shadow rounded-xl p-4 ">
         <table className="min-w-full text-sm">
           <thead>
-            <tr className="border-b bg-gray-100">
+            <tr className="border-b bg-gray-100 ">
               <th className="p-2">Name</th>
               <th className="p-2">Description</th>
               <th className="p-2">Default Amount</th>
@@ -61,7 +62,7 @@ export default function Fees() {
                 <td className="p-2 space-x-1">
                   <button
                     onClick={() => openModal(fee)}
-                    className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs"
+                    className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800"
                   >
                     View / Edit
                   </button>

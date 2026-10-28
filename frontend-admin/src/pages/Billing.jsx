@@ -12,10 +12,11 @@ import {
   Inbox,
   LayoutGrid
 } from "lucide-react";
-
+import AccentBadge from "../components/AccentBadge"
 import BillInfoModal from "../components/billing/BillInfoModal";
-import FeesPage from "../components/billing/FeesPage";
+
 import FeesManager from "./FeesManager";
+import { AuthContext } from "../contexts/AuthContext";
 export default function Billing() {
   const { bills } = useContext(AdminBillingContext);
   const { refNumber } = useParams(); // Assumes route is /billing/:refNumber?
@@ -91,19 +92,16 @@ export default function Billing() {
   );
 
   return (
-    <div className="p-6 font-['Inter'] bg-gray-50 min-h-screen">
+    <div className="p-6 font-['Inter'] bg-gray-50 min-h-screen dark:bg-gray-900">
       <div className="max-w-7xl mx-auto">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-4 rounded-xl shadow">
+        <header className="dark:bg-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 bg-white p-4 rounded-xl shadow">
           <div>
-      <div className="flex items-center gap-2 p-3 bg-blue-50 text-blue-600 rounded-xl w-fit border border-purple-100">
-               <LayoutGrid size={18} />
-               <span className="text-sm font-black uppercase tracking-tight">Billing Management</span>
-            </div>
+            <AccentBadge icon={LayoutGrid}>Billing Management</AccentBadge>
           </div>
           
           <button 
             onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
+            className={` flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
               showArchived ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
             }`}
           >
@@ -113,13 +111,13 @@ export default function Billing() {
         </header>
 
         {/* ───────── Tabs ───────── */}
-        <div className="flex gap-1 mb-6 bg-gray-200/50 p-1 rounded-xl w-fit">
+        <div className="flex gap-1 mb-6 bg-gray-200/50 p-1 rounded-xl w-fit dark:bg-gray-800">
           {["bills", "fees"].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-6 py-2 text-sm font-semibold rounded-lg transition-all ${
-                activeTab === tab ? "bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"
+                activeTab === tab ? "dark:bg-[var(--accent)] dark:text-gray-50 bg-white text-black shadow-sm" : "text-gray-500 hover:text-gray-700"
               }`}
             >
               {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -130,20 +128,20 @@ export default function Billing() {
         {activeTab === "bills" ? (
           <div className="space-y-4">
             {/* ───────── Filters ───────── */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="dark:bg-gray-800 dark:border-gray-700 bg-white p-4 rounded-xl shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                 <input 
                   type="text"
                   placeholder="Search Reference No..."
-                  className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  className="dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
               </div>
               
               <select 
-                className="w-full py-2 border border-gray-200 rounded-lg outline-none"
+                className="w-full py-2 border dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 border-gray-200 rounded-lg outline-none"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
@@ -155,7 +153,7 @@ export default function Billing() {
               
               <div className="flex gap-2">
                 <select 
-                  className=" px-6 py-2 border border-gray-200 rounded-lg outline-none text-xs appearance-none"
+                  className="dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 px-6 py-2 border border-gray-200 rounded-lg outline-none text-xs appearance-none"
                   onChange={(e) => setDateFilter({ ...dateFilter, type: e.target.value })}
                 >
                   <option value="all">No Date Filter</option>
@@ -166,17 +164,17 @@ export default function Billing() {
                 <input 
                   type={dateFilter.type === "year" ? "number" : dateFilter.type === "month" ? "month" : "date"}
                   disabled={dateFilter.type === "all"}
-                  className=" px-2 py-2 border border-gray-200 rounded-lg outline-none disabled:bg-gray-50"
+                  className="dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 px-2 py-2 border border-gray-200 rounded-lg outline-none disabled:bg-gray-50"
                   onChange={(e) => setDateFilter({ ...dateFilter, value: e.target.value })}
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-2 text-sm text-gray-500">
+              <div className="flex items-center justify-end gap-2 text-sm text-gray-500 ">
                 <span>Show</span>
                 <select 
                   value={itemsPerPage} 
                   onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                  className="border rounded px-6 py-1"
+                  className="border rounded px-6 py-1 dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800"
                 >
                   <option value={5}>5</option>
                   <option value={10}>10</option>
@@ -187,23 +185,23 @@ export default function Billing() {
             </div>
 
             {/* ───────── Table ───────── */}
-            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="dark:bg-gray-800 dark:border-gray-700 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
               <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Reference No.</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Date Created</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                  <tr className="bg-gray-50 border-b border-gray-200 dark:bg-gray-800">
+                    <th className="px-6 py-4 text-xs font-bold dark:text-gray-50 text-gray-500 uppercase tracking-wider">Reference No.</th>
+                    <th className="px-6 py-4 text-xs font-bold dark:text-gray-50 text-gray-500 uppercase tracking-wider">Date Created</th>
+                    <th className="px-6 py-4 text-xs font-bold dark:text-gray-50 text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-4 text-xs font-bold dark:text-gray-50 text-gray-500 uppercase tracking-wider text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {paginatedBills.map((bill) => (
                     <tr key={bill.id} className="hover:bg-blue-50/30 transition-colors group">
-                      <td className="px-6 py-4 font-mono text-sm font-semibold text-gray-700">
+                      <td className="px-6 py-4 font-mono text-sm font-semibold text-gray-700 dark:text-gray-50">
                         #{bill.reference_no}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
+                      <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-50">
                         {new Date(bill.created_at).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4">
@@ -234,22 +232,22 @@ export default function Billing() {
             </div>
 
             {/* ───────── Pagination ───────── */}
-            <div className="flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-              <p className="text-sm text-gray-500">
+            <div className="dark:bg-gray-800 dark:border-gray-700 flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <p className="text-sm text-gray-500 dark:text-gray-50">
                 Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, processedBills.length)}</span> of <span className="font-medium">{processedBills.length}</span> results
               </p>
               <div className="flex gap-2">
                 <button 
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => prev - 1)}
-                  className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-30 transition-all"
+                  className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-30 transition-all dark:bg-gray-800 dark:text-gray-50"
                 >
                   <ChevronLeft size={20} />
                 </button>
                 <button 
                   disabled={currentPage === totalPages || totalPages === 0}
                   onClick={() => setCurrentPage(prev => prev + 1)}
-                  className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-30 transition-all"
+                  className="p-2 border rounded-lg hover:bg-gray-50 disabled:opacity-30 transition-all dark:text-gray-50"
                 >
                   <ChevronRight size={20} />
                 </button>

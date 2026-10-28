@@ -1,12 +1,13 @@
-import { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import LoadingIndicator from "./LoadingIndicator";
-import { AuthContext } from "../contexts/AuthContext";
 
-function Form({ onAuthSuccess }) {
-  const { login } = useContext(AuthContext);
-  const navigate = useNavigate();
-
+// This component no longer calls login() or navigate() itself — it just
+// collects credentials and hands them to whatever `onSubmit` the parent
+// provides. Previously it did its own login + redirect internally, which
+// meant Login.jsx's handleLogin (and the welcome animation it triggers)
+// was never reached: this component was navigating away on its own before
+// Login.jsx's logic ever ran.
+function Form({ onSubmit }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -15,25 +16,8 @@ function Form({ onAuthSuccess }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      const user = await login({ email, password });
-
-      if (!user) {
-        alert("Invalid credentials or unauthorized account.");
-        return;
-      }
-
-      const ROLE_HOME = {
-        staff: "/staff",
-        tour_guide: "/tour-guide",
-        station_staff: "/station",
-      };
-
-      navigate(ROLE_HOME[user.role], { replace: true });
-    } catch (error) {
-      console.error("Login error:", error);
-      alert("Login failed.");
+      await onSubmit({ email, password });
     } finally {
       setLoading(false);
     }

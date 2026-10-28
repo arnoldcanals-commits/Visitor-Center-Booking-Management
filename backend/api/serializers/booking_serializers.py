@@ -135,7 +135,7 @@ class BookingGuestCreateSerializer(serializers.ModelSerializer):
 class TourPackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = TourPackage
-        fields = ["id", "name"]
+        fields = ["id", "name", "activities"]
 
 
 # ============================================================
@@ -317,6 +317,13 @@ class EventStationCheckSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
 
+from ..models import Activity  # add to the existing import block
+
+class ActivitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Activity
+        fields = ["id", "name", "description", "extra_price", "is_active"]
+        read_only_fields = fields
 
 # ============================================================
 # BOOKING
@@ -334,10 +341,18 @@ class BookingSerializer(serializers.ModelSerializer):
     event_end_date = serializers.DateField(source="event.end_date", read_only=True)
     can_review = serializers.SerializerMethodField()
     event_station_checks = EventStationCheckSerializer(many=True, read_only=True)
+    selected_activities = ActivitySerializer(many=True, read_only=True)
 
     # Write
     package = serializers.PrimaryKeyRelatedField(queryset=TourPackage.objects.all(), write_only=True)
     guests = BookingGuestCreateSerializer(source="booking_guests", many=True, write_only=True)
+    activity_ids = serializers.PrimaryKeyRelatedField(
+        source="selected_activities",
+        queryset=Activity.objects.filter(is_active=True),
+        many=True,
+        write_only=True,
+        required=False,
+    )
 
     class Meta:
         model = Booking
@@ -360,6 +375,9 @@ class BookingSerializer(serializers.ModelSerializer):
             "reviews",
             "can_review",
             "event_station_checks",
+            "requested_cancellation",
+            "selected_activities",
+            "activity_ids",
         ]
         read_only_fields = [
             "id",
@@ -370,15 +388,30 @@ class BookingSerializer(serializers.ModelSerializer):
             "itinerary",
         ]
 
+    def validate(self, attrs):
+        package = attrs.get("package")
+        activities = attrs.get("selected_activities")
+        if package and activities:
+            invalid = [a for a in activities if a.package_id != package.id]
+            if invalid:
+                raise serializers.ValidationError({
+                    "activity_ids": "All selected activities must belong to the chosen package."
+                })
+        return attrs
+
     @transaction.atomic
     def create(self, validated_data):
         request = self.context["request"]
         guests_data = validated_data.pop("booking_guests", [])
+        activities = validated_data.pop("selected_activities", [])
 
         booking = Booking.objects.create(
             tourist=request.user,
             **validated_data
         )
+
+        if activities:
+            booking.selected_activities.set(activities)
 
         for guest_data in guests_data:
             BookingGuest.objects.create(

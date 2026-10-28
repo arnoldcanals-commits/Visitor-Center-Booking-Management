@@ -18,25 +18,28 @@ import Transport from "./pages/Transport";
 import FeesManager from "./pages/FeesManager";
 import SystemSettings from "./pages/SystemSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminPermitPage from "./pages/Permits";
 import { AuthProvider, AuthContext } from "./contexts/AuthContext";
 import { AdminDataProvider } from "./contexts/AdminDataContext";
 import { AdminBillingProvider } from "./contexts/AdminBillingContext";
 
 import Layout from "./components/Layout";
 
-
 import "./css/style.css";
 
 function Logout() {
   const { logout } = React.useContext(AuthContext);
+  const [done, setDone] = React.useState(false);
 
   React.useEffect(() => {
     logout();
-  }, [logout]);
+    setDone(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
+  if (!done) return null;
   return <Navigate to="/login" replace />;
 }
-
 function AppRoutes() {
   const { user } = React.useContext(AuthContext);
 
@@ -65,13 +68,14 @@ function AppRoutes() {
         <Route path="events" element={<Events />} />
         <Route path="bookings" element={<Bookings />} />
         <Route path="tracking" element={<Tracking />} />
-         <Route path="ratings" element={<Ratings />} />
+        <Route path="ratings" element={<Ratings />} />
         <Route path="billing" element={<Billing />} />
-                <Route path="fees" element={<FeesManager />} />
+        <Route path="fees" element={<FeesManager />} />
         <Route path="billing/:refNumber" element={<Billing />} />
-           <Route path="reports" element={<Reports />} />
+        <Route path="reports" element={<Reports />} />
         <Route path="systemsetting" element={<SystemSettings />} />
         <Route path="transport" element={<Transport />} />
+        <Route path="permit" element={<AdminPermitPage />} />
       </Route>
 
       <Route path="*" element={<NotFound />} />
@@ -87,7 +91,7 @@ export default function App() {
           <BrowserRouter>
             <AppRoutes />
           </BrowserRouter>
-          </AdminBillingProvider>
+        </AdminBillingProvider>
       </AdminDataProvider>
     </AuthProvider>
   );

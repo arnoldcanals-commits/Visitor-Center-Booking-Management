@@ -31,7 +31,12 @@ function Form({ route, method, onAuthSuccess }) {
                     ? { email, password }
                     : { username, email, password, password2 };
 
-            const res = await api.post(route, payload);
+            const minDelay = new Promise((resolve) => setTimeout(resolve, 1500));
+
+            const [res] = await Promise.all([
+                api.post(route, payload),
+                minDelay,
+            ]);
 
             // ✅ LOGIN FLOW
             if (method === "login") {
@@ -76,7 +81,7 @@ function Form({ route, method, onAuthSuccess }) {
     return (
         <form
             onSubmit={handleSubmit}
-            className="flex flex-col items-center justify-center mx-auto my-6 p-5 max-w-[420px] rounded-lg shadow-md bg-white/10 backdrop-blur-md"
+            className="flex flex-col items-center justify-center mx-auto my-6 p-5 max-w-[520px] rounded-lg shadow-md bg-white/10 backdrop-blur-md transition-shadow duration-300 hover:shadow-lg"
         >
             <h1 className="text-xl font-bold mb-4">
                 {name}
@@ -84,14 +89,14 @@ function Form({ route, method, onAuthSuccess }) {
 
             {/* ✅ SUCCESS MESSAGE */}
             {message && (
-                <div className="w-11/12 mb-3 p-2 text-sm text-green-700 bg-green-100 rounded">
+                <div className="w-11/12 mb-3 p-2 text-sm text-green-700 bg-green-100 rounded animate-[fadeIn_0.3s_ease-out]">
                     {message}
                 </div>
             )}
 
             {/* ❌ ERROR MESSAGE */}
             {error && (
-                <div className="w-11/12 mb-3 p-2 text-sm text-red-700 bg-red-100 rounded">
+                <div className="w-11/12 mb-3 p-2 text-sm text-red-700 bg-red-100 rounded animate-[fadeIn_0.3s_ease-out]">
                     {error}
                 </div>
             )}
@@ -100,7 +105,7 @@ function Form({ route, method, onAuthSuccess }) {
             {method === "login" && (
                 <>
                     <input
-                        className="w-11/12 p-2 my-2 border border-gray-300 rounded"
+                        className="w-11/12 p-2 my-2 border border-gray-300 rounded outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -110,7 +115,7 @@ function Form({ route, method, onAuthSuccess }) {
 
                     <div className="w-11/12 relative my-2">
                         <input
-                            className="w-full p-2 border border-gray-300 rounded pr-12"
+                            className="w-full p-2 border border-gray-300 rounded pr-12 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             type={showPassword ? "text" : "password"}
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -120,7 +125,7 @@ function Form({ route, method, onAuthSuccess }) {
                         <button
                             type="button"
                             onClick={() => setShowPassword((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 transition-transform duration-150 hover:text-gray-800 hover:scale-110 active:scale-95"
                         >
                             {showPassword ? <FaEyeSlash /> : <FaEye />}
                         </button>
@@ -128,9 +133,9 @@ function Form({ route, method, onAuthSuccess }) {
 
                     {/* 🔗 Forgot Password Hook */}
                     <div className="w-11/12 text-right text-sm mt-1">
-                        <a
-                            href="/forgot-password"
-                            className="text-blue-600 hover:underline"
+                        
+                         <a   href="/forgot-password"
+                            className="text-blue-600 transition-colors duration-150 hover:text-blue-800 hover:underline"
                         >
                             Forgot password?
                         </a>
@@ -143,7 +148,7 @@ function Form({ route, method, onAuthSuccess }) {
                 <>
                     <div className="w-full flex flex-col md:flex-row md:gap-2">
                         <input
-                            className="w-full p-2 my-2 border border-gray-300 rounded"
+                            className="w-full p-2 my-2 border border-gray-300 rounded outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
@@ -151,7 +156,7 @@ function Form({ route, method, onAuthSuccess }) {
                             required
                         />
                         <input
-                            className="w-full p-2 my-2 border border-gray-300 rounded"
+                            className="w-full p-2 my-2 border border-gray-300 rounded outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
@@ -163,7 +168,7 @@ function Form({ route, method, onAuthSuccess }) {
                     <div className="w-full flex flex-col md:flex-row md:gap-2">
                         <div className="w-full relative">
                             <input
-                                className="w-full p-2 my-2 border border-gray-300 rounded pr-12"
+                                className="w-full p-2 my-2 border border-gray-300 rounded pr-12 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
@@ -173,7 +178,7 @@ function Form({ route, method, onAuthSuccess }) {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword((v) => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 transition-transform duration-150 hover:text-gray-800 hover:scale-110 active:scale-95"
                             >
                                 {showPassword ? <FaEyeSlash /> : <FaEye />}
                             </button>
@@ -181,7 +186,7 @@ function Form({ route, method, onAuthSuccess }) {
 
                         <div className="w-full relative">
                             <input
-                                className="w-full p-2 my-2 border border-gray-300 rounded pr-12"
+                                className="w-full p-2 my-2 border border-gray-300 rounded pr-12 outline-none transition-all duration-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                                 type={showPassword2 ? "text" : "password"}
                                 value={password2}
                                 onChange={(e) => setPassword2(e.target.value)}
@@ -191,7 +196,7 @@ function Form({ route, method, onAuthSuccess }) {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword2((v) => !v)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 transition-transform duration-150 hover:text-gray-800 hover:scale-110 active:scale-95"
                             >
                                 {showPassword2 ? <FaEyeSlash /> : <FaEye />}
                             </button>
@@ -200,10 +205,14 @@ function Form({ route, method, onAuthSuccess }) {
                 </>
             )}
 
-            {loading && <LoadingIndicator />}
+            {loading && (
+                <div className="animate-[fadeIn_0.2s_ease-out]">
+                    <LoadingIndicator />
+                </div>
+            )}
 
             <button
-                className="w-11/12 p-3 mt-4 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                className="w-11/12 p-3 mt-4 bg-blue-600 text-white rounded transition-all duration-200 hover:bg-blue-700 hover:shadow-md active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                 type="submit"
                 disabled={loading}
             >

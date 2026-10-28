@@ -10,3 +10,4 @@ from .station_serializers import *
 from .guest_serializers import *
 from .notif_serializers import *
 from .review_serializers import *
+from .admin_users_serializers import *

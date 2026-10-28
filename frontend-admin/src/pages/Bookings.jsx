@@ -9,7 +9,7 @@ import ImagePreview from "../components/booking/ImagePreview";
 import YearMonthFilter from "../components/booking/YearMonthFilter";
 import EventAssignModal from "../components/booking/EventAssignModal";
 import { Ticket } from "lucide-react";
-
+import AccentBadge from "../components/AccentBadge";
 const STATUS_CHOICES = [
   { value: "pending", label: "Pending", color: "bg-yellow-500" },
   { value: "approved", label: "Approved", color: "bg-blue-600" },
@@ -373,11 +373,8 @@ const bookingsCancelledCount = useMemo(() => {
       <div className="flex flex-col gap-4 mb-4 w-full">
   
   {/* ROW 1: Page Title (Left) & Actions (Right) */}
-  <div className="flex items-center justify-between w-full bg-white rounded-xl shadow p-4">
-    <div className="flex items-center gap-2 p-3 bg-green-50 text-green-600 rounded-xl w-fit border border-purple-100">
-      <Ticket size={18} />
-      <span className="text-sm font-black uppercase tracking-tight">Booking Management</span>
-    </div>
+  <div className="flex items-center justify-between w-full bg-white rounded-xl shadow p-4 dark:bg-gray-800">
+    <AccentBadge icon={Ticket}>Booking Management</AccentBadge>
 
     <div className="flex gap-2 items-center">
       {/* BULK RESTORE/ARCHIVE BUTTON */}
@@ -397,7 +394,7 @@ const bookingsCancelledCount = useMemo(() => {
       <button
         onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}
         className={`text-sm px-3 py-2 rounded-lg text-sm font-medium border transition ${
-          showArchived ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          showArchived ? "bg-gray-800 dark:bg-white dark:text-gray-900 text-white border-gray-800" : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-900 dark:text-white"
         }`}
       >
         {showArchived ? "View Active" : "View Archive"}
@@ -412,97 +409,97 @@ const bookingsCancelledCount = useMemo(() => {
   {/* ROW 2: Booking's Today Counter */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full">
   {/* Pending Bookings */}
-  <div className="bg-white rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
+  <div className="dark:bg-gray-800 dark:text-white bg-white rounded-xl shadow p-4 flex flex-col justify-between min-w-0 ">
     <div className="flex items-center justify-between gap-2 mb-3">
-      <h3 className="font-semibold text-gray-700 text-sm truncate">Pending</h3>
+      <h3 className="font-semibold text-gray-700 text-sm truncate dark:text-white">Pending</h3>
       <span className="text-xs bg-gray-100 text-gray-800 font-bold px-2 py-0.5 rounded-full">{bookingsPendingCount}</span>
     </div>
     <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-      <div>T: <span className="font-semibold text-black">{bookingsPendingTodayCount}</span></div>
+      <div>T: <span className="font-semibold dark:text-white text-black">{bookingsPendingTodayCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>M: <span className="font-semibold text-black">{bookingsPendingThisMonthCount}</span></div>
+      <div>M: <span className="font-semibold dark:text-white text-black">{bookingsPendingThisMonthCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>Y: <span className="font-semibold text-black">{bookingsPendingThisYearCount}</span></div>
+      <div>Y: <span className="font-semibold dark:text-white text-black">{bookingsPendingThisYearCount}</span></div>
     </div>
   </div>
 
   {/* Approved Bookings */}
-  <div className="bg-white rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
     <div className="flex items-center justify-between gap-2 mb-3">
-      <h3 className="font-semibold text-gray-700 text-sm truncate">Approved</h3>
+      <h3 className="font-semibold text-gray-700 text-sm truncate dark:text-white">Approved</h3>
       <span className="text-xs bg-emerald-50 text-emerald-700 font-bold px-2 py-0.5 rounded-full">{bookingsApprovedCount}</span>
     </div>
-    <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-      <div>T: <span className="font-semibold text-black">{bookingsApprovedTodayCount}</span></div>
+    <div className=" flex items-center justify-between text-xs text-gray-500 border-t pt-2">
+      <div>T: <span className="font-semibold dark:text-white text-black">{bookingsApprovedTodayCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>M: <span className="font-semibold text-black">{bookingsApprovedThisMonthCount}</span></div>
+      <div>M: <span className="font-semibold dark:text-white text-black">{bookingsApprovedThisMonthCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>Y: <span className="font-semibold text-black">{bookingsApprovedThisYearCount}</span></div>
+      <div>Y: <span className="font-semibold dark:text-white text-black">{bookingsApprovedThisYearCount}</span></div>
     </div>
   </div>
 
   {/* Completed Bookings */}
-  <div className="bg-white rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
     <div className="flex items-center justify-between gap-2 mb-3">
-      <h3 className="font-semibold text-gray-700 text-sm truncate">Completed</h3>
+      <h3 className="font-semibold text-gray-700 text-sm truncate dark:text-white">Completed</h3>
       <span className="text-xs bg-blue-50 text-blue-700 font-bold px-2 py-0.5 rounded-full">{bookingsCompletedCount}</span>
     </div>
     <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-      <div>T: <span className="font-semibold text-black">{bookingsCompletedTodayCount}</span></div>
+      <div>T: <span className="font-semibold dark:text-white text-black">{bookingsCompletedTodayCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>M: <span className="font-semibold text-black">{bookingsCompletedThisMonthCount}</span></div>
+      <div>M: <span className="font-semibold dark:text-white text-black">{bookingsCompletedThisMonthCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>Y: <span className="font-semibold text-black">{bookingsCompletedThisYearCount}</span></div>
+      <div>Y: <span className="font-semibold dark:text-white text-black">{bookingsCompletedThisYearCount}</span></div>
     </div>
   </div>
 
   {/* Cancelled Bookings */}
-  <div className="bg-white rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
     <div className="flex items-center justify-between gap-2 mb-3">
-      <h3 className="font-semibold text-gray-700 text-sm truncate">Cancelled</h3>
+      <h3 className="font-semibold text-gray-700 text-sm truncate dark:text-white">Cancelled</h3>
       <span className="text-xs bg-amber-50 text-amber-700 font-bold px-2 py-0.5 rounded-full">{bookingsCancelledCount}</span>
     </div>
     <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-      <div>T: <span className="font-semibold text-black">{bookingsCancelledTodayCount}</span></div>
+      <div>T: <span className="font-semibold dark:text-white text-black">{bookingsCancelledTodayCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>M: <span className="font-semibold text-black">{bookingsCancelledThisMonthCount}</span></div>
+      <div>M: <span className="font-semibold dark:text-white text-black">{bookingsCancelledThisMonthCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>Y: <span className="font-semibold text-black">{bookingsCancelledThisYearCount}</span></div>
+      <div>Y: <span className="font-semibold dark:text-white text-black">{bookingsCancelledThisYearCount}</span></div>
     </div>
   </div>
 
   {/* Rejected Bookings */}
-  <div className="bg-white rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
+  <div className="bg-white dark:bg-gray-800 rounded-xl shadow p-4 flex flex-col justify-between min-w-0">
     <div className="flex items-center justify-between gap-2 mb-3">
-      <h3 className="font-semibold text-gray-700 text-sm truncate">Rejected</h3>
+      <h3 className="font-semibold text-gray-700 text-sm truncate dark:text-white">Rejected</h3>
       <span className="text-xs bg-rose-50 text-rose-700 font-bold px-2 py-0.5 rounded-full">{bookingsRejectedCount}</span>
     </div>
     <div className="flex items-center justify-between text-xs text-gray-500 border-t pt-2">
-      <div>T: <span className="font-semibold text-black">{bookingsRejectedTodayCount}</span></div>
+      <div>T: <span className="font-semibold dark:text-white text-black">{bookingsRejectedTodayCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>M: <span className="font-semibold text-black">{bookingsRejectedThisMonthCount}</span></div>
+      <div>M: <span className="font-semibold dark:text-white text-black">{bookingsRejectedThisMonthCount}</span></div>
       <div className="text-gray-300">|</div>
-      <div>Y: <span className="font-semibold text-black">{bookingsRejectedThisYearCount}</span></div>
+      <div>Y: <span className="font-semibold dark:text-white text-black">{bookingsRejectedThisYearCount}</span></div>
     </div>
   </div>
 </div>
 
   {/* ROW 3: Filters (Search, Dropdowns, and Year/Month Filter) */}
-  <div className="flex flex-wrap items-center justify-between gap-4 w-full bg-white rounded-xl shadow p-4">
+  <div className="dark:bg-gray-800 flex flex-wrap items-center justify-between gap-4 w-full bg-white rounded-xl shadow p-4">
     <div className="flex flex-wrap gap-2 items-center text-slate-600">
       <input
         type="text"
         placeholder="Search by tourist..."
         value={search}
         onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
-        className="border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
+        className="border dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
       />
 
       {/* STATUS FILTER DROPDOWN */}
       <select
         value={activeTab}
         onChange={(e) => { setActiveTab(e.target.value); setCurrentPage(1); }}
-        className="border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
+        className="border dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400"
       >
         <option value="all">All</option>
         {STATUS_CHOICES.map((s) => (
@@ -513,7 +510,7 @@ const bookingsCancelledCount = useMemo(() => {
       <select
         value={entriesPerPage}
         onChange={(e) => { setEntriesPerPage(parseInt(e.target.value)); setCurrentPage(1); }}
-        className="border border-gray-300 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400 px-6"
+        className="border dark:bg-gray-700 dark:text-gray-50 border-gray-300 dark:border-gray-800 text-gray-700 text-sm p-2 rounded-lg outline-none focus:border-blue-500 placeholder-gray-400 px-6"
       >
         {[5, 10, 25, 50].map((n) => (
           <option key={n} value={n}>{n} per page</option>
@@ -568,8 +565,8 @@ const bookingsCancelledCount = useMemo(() => {
       {/* Pagination Controls */}
       <div className="flex items-center justify-between mt-4">
         <p className="text-sm text-gray-500">
-          Showing page <span className="font-medium text-black">{currentPage}</span> of{" "}
-          <span className="font-medium text-black">{totalPages}</span>
+          Showing page <span className="font-medium text-black dark:text-white">{currentPage}</span> of{" "}
+          <span className="font-medium text-black dark:text-white">{totalPages}</span>
           {" "}({filteredBookings.length} total)
         </p>
         <div className="flex gap-1 items-center">
@@ -578,8 +575,8 @@ const bookingsCancelledCount = useMemo(() => {
             disabled={currentPage === 1}
             className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
               currentPage === 1
-                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-500 dark:text-gray-200 dark:border-gray-800"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800"
             }`}
           >
             Previous
@@ -596,8 +593,8 @@ const bookingsCancelledCount = useMemo(() => {
                 onClick={() => setCurrentPage(p)}
                 className={`min-w-[2.25rem] px-3 py-2 rounded-lg text-sm font-medium border transition ${
                   p === currentPage
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                    ? " text-white  bg-[var(--accent)] dark:text-gray-200 dark:border-gray-800"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800"
                 }`}
               >
                 {p}
@@ -610,8 +607,8 @@ const bookingsCancelledCount = useMemo(() => {
             disabled={currentPage === totalPages}
             className={`px-3 py-2 rounded-lg text-sm font-medium border transition ${
               currentPage === totalPages
-                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed dark:bg-gray-500 dark:text-gray-200 dark:border-gray-800"
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800"
             }`}
           >
             Next

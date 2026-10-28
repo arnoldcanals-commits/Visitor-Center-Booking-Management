@@ -16,6 +16,8 @@ router = DefaultRouter()
 router.register(r"fee-types", FeeTypeViewSet, basename="fee-types")
 router.register(r"bill-items", BillItemViewSet, basename="bill-items")
 
+
+
 urlpatterns = [
     path('api/admin/', admin.site.urls),
     path("api/user/register/", RegisterView.as_view(), name="register"),
@@ -38,6 +40,7 @@ urlpatterns = [
     path("api/guide/", include("api.urls.guide_urls")),
     path("api/", include("api.urls.guest_urls")),
     path("api/", include("transport.urls")),
+    path("api/", include("permit.urls")),
 ]+ static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 
