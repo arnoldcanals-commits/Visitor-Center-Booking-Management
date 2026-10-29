@@ -11,36 +11,33 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "django-insecure-#ei)of7qtv&uj87#=d7(9dx(2s%e4li2r(f#r-^r$f3a%sk2e9")
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
 
-# ✅ Remove spaces and duplicates
-ALLOWED_HOSTS = ["148.230.100.89", "localhost",  "sablayanvisitorcenter.com","www.sablayanvisitorcenter.com",'127.0.0.1']
+
+
+DEBUG = os.getenv("DJANGO_DEBUG", "False") == "True"
+
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
+if not SECRET_KEY:
+    if DEBUG:
+        SECRET_KEY = "dev-only-insecure-key"
+    else:
+        raise RuntimeError("DJANGO_SECRET_KEY is not set")
+
+
+def env_list(name, default=""):
+    return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
+
 
 # ✅ Fix minor typo: “CORS_ALLOWS_CREDENTIALS” → “CORS_ALLOW_CREDENTIALS”
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
 
 # ✅ CSRF_TRUSTED_ORIGINS must include full protocol (http or https)
-CSRF_TRUSTED_ORIGINS = [
-    "http://148.230.100.89",
-    "http://localhost",
-    "http://sablayanvisitorcenter.com",
-    "https://sablayanvisitorcenter.com",
-     "http://localhost:5173",
-     
-]
-CORS_ALLOWED_ORIGINS = [
-    "https://sablayanvisitorcenter.com",
-    "http://sablayanvisitorcenter.com",
-    "http://148.230.100.89",
-     "http://localhost:5173",
-     "http://localhost:5174",
-     "http://localhost:5175",
-]
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
+CORS_ALLOWED_ORIGINS = env_list("DJANGO_CORS_ALLOWED_ORIGINS")
+
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -103,12 +100,24 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'backend.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',  # ✅ fine for testing, but use MySQL/PostgreSQL later
-        'NAME': BASE_DIR / 'db.sqlite3',
+if os.getenv("DB_NAME"):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv("DB_NAME"),
+            'USER': os.getenv("DB_USER"),
+            'PASSWORD': os.getenv("DB_PASSWORD"),
+            'HOST': os.getenv("DB_HOST", "127.0.0.1"),
+            'PORT': os.getenv("DB_PORT", "5432"),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -145,9 +154,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST='smtp.gmail.com'
 EMAIL_PORT='587'
 EMAIL_USE_TLS='True'
-EMAIL_HOST_USER='sbvc2026@gmail.com'
-EMAIL_HOST_PASSWORD="poycqjleuyvqojxf"
-DEFAULT_FROM_EMAIL='Sablayan Tourism <sbvs2026@gmail.com>'
+EMAIL_HOST_USER='aposmart2026@gmail.com'
+EMAIL_HOST_PASSWORD="aposmart2026"
+DEFAULT_FROM_EMAIL='DENR <aposmart2026@gmail.com>'
 
 FRONTEND_URL='https://yourdomain.com'
 
@@ -156,3 +165,8 @@ CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
+
+if os.getenv("USE_HTTPS") == "True":
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
