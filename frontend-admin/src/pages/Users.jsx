@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import api from "../api";
 import { Archive, ArchiveRestore, Users2 } from "lucide-react";
 import AccentBadge from "../components/AccentBadge";
+import UserFormModal from "../components/users/UserFormModal";
 
 const ROLES = ["admin", "tourist", "tour_guide", "staff", "station_staff", "driver", "ranger"];
 const ASSIGNABLE_ROLES = ROLES.filter((r) => r !== "admin");
@@ -23,20 +24,9 @@ const STATUS_COLORS = {
 
 const USERS_ENDPOINT = "api/site_admin/users/";
 
-const emptyUserForm = {
-  username: "",
-  email: "",
-  phone_number: "",
-  role: "tourist",
-  status: "",
-  is_email_verified: false,
-  qualifications: [],
-};
-
 export default function Users() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   const [isOpen, setIsOpen] = useState(false);
@@ -116,23 +106,18 @@ export default function Users() {
   // MODAL HANDLERS
   // ---------------------------------------
   const openCreateModal = () => {
-    setEditData({ ...emptyUserForm });
+    setEditData(null);
     setRoleLocked(false);
     setIsOpen(true);
   };
 
   const openEditModal = (user) => {
-    setEditData({
-      ...user,
-      status: user.status || "",
-      is_email_verified: !!user.is_email_verified,
-    });
+    setEditData(user);
     setRoleLocked(user.role === "admin");
     setIsOpen(true);
   };
 
   const closeModal = () => {
-    if (saving) return;
     setIsOpen(false);
     setEditData(null);
     setRoleLocked(false);
@@ -140,34 +125,21 @@ export default function Users() {
 
   // ---------------------------------------
   // CREATE / UPDATE
+  // (errors are thrown back to UserFormModal, which displays them)
   // ---------------------------------------
-  const handleSubmit = async () => {
-    if (!editData) return;
+  const handleSubmit = async (payload, id) => {
+    const config =
+      payload instanceof FormData
+        ? { headers: { "Content-Type": "multipart/form-data" } }
+        : undefined;
 
-    const payload = {
-      username: editData.username,
-      email: editData.email,
-      phone_number: editData.phone_number || null,
-      role: editData.role,
-      status: editData.status || null,
-      is_email_verified: editData.is_email_verified,
-    };
-
-    setSaving(true);
-    try {
-      if (editData.id) {
-        await api.patch(`${USERS_ENDPOINT}${editData.id}/`, payload);
-      } else {
-        await api.post(USERS_ENDPOINT, payload);
-      }
-      await fetchUsers();
-      closeModal();
-    } catch (err) {
-      console.error("Failed to save user:", err);
-      setError(err?.response?.data?.detail || "Failed to save user.");
-    } finally {
-      setSaving(false);
+    if (id) {
+      await api.patch(`${USERS_ENDPOINT}${id}/`, payload, config);
+    } else {
+      await api.post(USERS_ENDPOINT, payload, config);
     }
+    await fetchUsers();
+    closeModal();
   };
 
   // ---------------------------------------
@@ -443,105 +415,15 @@ export default function Users() {
 
       {/* MODAL */}
       {isOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50 p-4 backdrop-blur-sm">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-xl border border-transparent dark:border-gray-700">
-            <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
-              {editData?.id ? "Edit User" : "Create New User"}
-            </h2>
-
-            <label className="block mb-2">
-              <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Username</span>
-              <input
-                className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500"
-                value={editData.username}
-                onChange={(e) => setEditData({ ...editData, username: e.target.value })}
-              />
-            </label>
-
-            <label className="block mb-2">
-              <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Email</span>
-              <input
-                type="email"
-                className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500"
-                value={editData.email}
-                onChange={(e) => setEditData({ ...editData, email: e.target.value })}
-              />
-            </label>
-
-            <label className="flex items-center gap-2 mb-3 mt-1">
-              <input
-                type="checkbox"
-                checked={!!editData.is_email_verified}
-                onChange={(e) => setEditData({ ...editData, is_email_verified: e.target.checked })}
-                className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Email verified</span>
-            </label>
-
-            <label className="block mb-2">
-              <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Phone Number</span>
-              <input
-                className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500"
-                value={editData.phone_number || ""}
-                onChange={(e) => setEditData({ ...editData, phone_number: e.target.value })}
-              />
-            </label>
-
-            <label className="block mb-2">
-              <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Status</span>
-              <select
-                className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500"
-                value={editData.status || ""}
-                onChange={(e) => setEditData({ ...editData, status: e.target.value })}
-              >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="block mb-4">
-              <span className="text-gray-600 dark:text-gray-400 text-sm font-medium">Role</span>
-              <select
-                className="w-full mt-1 p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 outline-none focus:border-blue-500 disabled:bg-gray-100 disabled:dark:bg-gray-600 disabled:text-gray-500"
-                value={editData.role}
-                disabled={roleLocked}
-                onChange={(e) => setEditData({ ...editData, role: e.target.value })}
-              >
-                {(roleLocked ? ["admin"] : ASSIGNABLE_ROLES).map((role) => (
-                  <option key={role} value={role}>
-                    {formatRole(role)}
-                  </option>
-                ))}
-              </select>
-              {roleLocked && (
-                <span className="text-xs text-gray-400 dark:text-gray-500 mt-1 block">
-                  Admin role cannot be changed.
-                </span>
-              )}
-            </label>
-
-            <div className="flex justify-end gap-2 flex-wrap">
-              <button
-                onClick={closeModal}
-                disabled={saving}
-                className="px-4 py-2 bg-gray-300 text-gray-800 rounded hover:bg-gray-400 dark:bg-gray-600 dark:text-gray-200 dark:hover:bg-gray-500 disabled:opacity-60"
-              >
-                Cancel
-              </button>
-
-              <button
-                onClick={handleSubmit}
-                disabled={saving}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 disabled:opacity-60"
-              >
-                {saving ? "Saving..." : editData.id ? "Save Changes" : "Create User"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <UserFormModal
+          user={editData}
+          roles={ASSIGNABLE_ROLES}
+          statusOptions={STATUS_OPTIONS}
+          formatRole={formatRole}
+          roleLocked={roleLocked}
+          onSubmit={handleSubmit}
+          onClose={closeModal}
+        />
       )}
     </div>
   );

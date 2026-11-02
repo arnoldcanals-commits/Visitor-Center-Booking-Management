@@ -4,24 +4,36 @@ import { ACCESS_TOKEN } from "../../constants";
 import BookingCard from "../../components/booking/BookingCard";
 import TopBar from "../../components/TopBar";
 import LoadingIndicator from "../../components/LoadingIndicator";
-import { CheckCircle2, Calendar, Clock, Palmtree, X } from "lucide-react";
+import { CheckCircle2, Calendar, Clock, Palmtree } from "lucide-react";
+
+const isLoggedIn = () => {
+  const token = localStorage.getItem(ACCESS_TOKEN);
+  return !!token && token !== "null" && token !== "undefined";
+};
+
+// Accepts either a plain array or a DRF-paginated payload
+// ({ count, next, previous, results: [...] }) and always returns an array
+// of booking objects, or null if the shape is unusable.
+const normalizeBookings = (data) => {
+  const list = Array.isArray(data) ? data : data?.results;
+  if (!Array.isArray(list)) return null;
+  return list.filter((b) => b && typeof b === "object");
+};
+
+const currentStatuses = ["pending", "approved", "active"];
+const historyStatuses = ["completed", "cancelled", "rejected"];
+
+const accentChip = {
+  backgroundColor: "color-mix(in srgb, var(--accent) 8%, transparent)",
+  color: "var(--accent)",
+  borderColor: "color-mix(in srgb, var(--accent) 20%, transparent)",
+};
 
 export default function BookingView() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState("current"); // current | history
-
-  const isLoggedIn = () => {
-    const token = localStorage.getItem(ACCESS_TOKEN);
-    return !!token && token !== "null" && token !== "undefined";
-  };
-
-  const accentChip = {
-    backgroundColor: "color-mix(in srgb, var(--accent) 8%, transparent)",
-    color: "var(--accent)",
-    borderColor: "color-mix(in srgb, var(--accent) 20%, transparent)",
-  };
 
   // authed is derived synchronously from the token, so it (and therefore
   // the header/tabs below) is known on first render — no need to wait
@@ -31,6 +43,7 @@ export default function BookingView() {
   const fetchBookings = useCallback(async () => {
     if (!isLoggedIn()) {
       setAuthed(false);
+      setBookings([]);
       setLoading(false);
       return;
     }
@@ -39,12 +52,22 @@ export default function BookingView() {
     setError(null);
     try {
       const res = await api.get("api/booking/my/");
-      setBookings(res.data);
+      const list = normalizeBookings(res?.data);
+
+      if (!list) {
+        console.error("Unexpected bookings response:", res?.data);
+        setBookings([]);
+        setError("Failed to load bookings. Please try again.");
+        return;
+      }
+
+      setBookings(list);
     } catch (err) {
       console.error("Failed to fetch bookings:", err);
+      setBookings([]);
       // A 401 here means the interceptor's refresh also failed;
       // it will redirect on its own, but guard just in case.
-      if (err.response?.status === 401) {
+      if (err?.response?.status === 401) {
         setAuthed(false);
       } else {
         setError("Failed to load bookings. Please try again.");
@@ -65,14 +88,17 @@ export default function BookingView() {
     fetchBookings();
   };
 
-  // --- STATUS GROUPING (MODEL-ALIGNED) ---
-  const currentStatuses = ["pending", "approved", "active"];
-  const historyStatuses = ["completed", "cancelled", "rejected"];
+  // Always an array, no matter what ended up in state.
+  const safeBookings = useMemo(
+    () => (Array.isArray(bookings) ? bookings : []),
+    [bookings]
+  );
 
-  const currentBookings = bookings.filter((b) =>
+  // --- STATUS GROUPING (MODEL-ALIGNED) ---
+  const currentBookings = safeBookings.filter((b) =>
     currentStatuses.includes(b.status)
   );
-  const historyBookings = bookings.filter((b) =>
+  const historyBookings = safeBookings.filter((b) =>
     historyStatuses.includes(b.status)
   );
 
@@ -81,8 +107,8 @@ export default function BookingView() {
 
   // --- ACTIVE BOOKING (SPECIAL UX) ---
   const activeBooking = useMemo(
-    () => bookings.find((b) => b.status === "active"),
-    [bookings]
+    () => safeBookings.find((b) => b.status === "active"),
+    [safeBookings]
   );
 
   // Only the list/status area below the header + tabs reacts to
@@ -142,12 +168,12 @@ export default function BookingView() {
   } else {
     body = (
       <div className="space-y-4">
-        {displayedBookings.map((booking) => {
+        {displayedBookings.map((booking, index) => {
           const isActive = booking.status === "active";
 
           return (
             <div
-              key={booking.id}
+              key={booking.id ?? `booking-${index}`}
               className={`
                 rounded-xl transition
                 ${isActive ? "ring-2 ring-teal-400 shadow-lg" : "hover:shadow-md"}

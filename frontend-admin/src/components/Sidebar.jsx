@@ -13,6 +13,8 @@ import {
   BarChart2,
   Menu,
   X,
+  Ship,
+  CheckCircle,
 } from "lucide-react";
 
 const sections = [
@@ -29,11 +31,16 @@ const sections = [
       { name: "Packages", to: "/packages", icon: Clipboard },
       { name: "Events", to: "/events", icon: Calendar },
       { name: "Bookings", to: "/bookings", icon: Ticket },
+      { name: "Transport", to: "/transport", icon: Ship },
     ],
   },
   {
     title: "Tracking",
-    links: [{ name: "Guest Tracking", to: "/tracking", icon: MapPin }],
+    links: [
+      { name: "Guest Tracking", to: "/tracking", icon: MapPin },
+      { name: "Permit Tracking", to: "/permit", icon: CheckCircle },
+    ],
+  
   },
   {
     title: "Reports",
