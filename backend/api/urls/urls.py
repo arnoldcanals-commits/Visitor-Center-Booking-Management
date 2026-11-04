@@ -71,7 +71,7 @@ urlpatterns = [
     path("forgot-password/", ForgotPasswordView.as_view()),
     path("reset-password/", ResetPasswordView.as_view()),
     path("information/", InformationListView.as_view(), name="information-list"),
-
+    path("dashboard/", DashboardHeroView.as_view(), name="dashboard-hero"),
     
     path("reviews/", ReviewListView.as_view()),
 

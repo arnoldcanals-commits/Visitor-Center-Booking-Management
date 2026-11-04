@@ -1,108 +1,169 @@
-import React, { useState } from 'react';
 
-import Sidebar from '../partials/Sidebar';
-import Header from '../partials/Header';
-import FilterButton from '../components/DropdownFilter';
-import Datepicker from '../components/Datepicker';
-import DashboardCard01 from '../partials/dashboard/DashboardCard01';
-import DashboardCard02 from '../partials/dashboard/DashboardCard02';
-import DashboardCard03 from '../partials/dashboard/DashboardCard03';
-import DashboardCard04 from '../partials/dashboard/DashboardCard04';
-import DashboardCard05 from '../partials/dashboard/DashboardCard05';
-import DashboardCard06 from '../partials/dashboard/DashboardCard06';
-import DashboardCard07 from '../partials/dashboard/DashboardCard07';
-import DashboardCard08 from '../partials/dashboard/DashboardCard08';
-import DashboardCard09 from '../partials/dashboard/DashboardCard09';
-import DashboardCard10 from '../partials/dashboard/DashboardCard10';
-import DashboardCard11 from '../partials/dashboard/DashboardCard11';
-import DashboardCard12 from '../partials/dashboard/DashboardCard12';
-import DashboardCard13 from '../partials/dashboard/DashboardCard13';
+import { useEffect, useState } from "react";
+import TopBar from "../components/TopBar";
+const FALLBACK = {
+  title: "Your stays and guests, all in one place",
+  subtitle:
+    "Review upcoming bookings, keep your guest list current and update your details without leaving this page.",
+  cta_label: "",
+  cta_url: "",
+  images: [],
+};
 
-
-function Dashboard() {
-
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
+function Frame({ image, index, className = "" }) {
   return (
-    <div className="flex h-screen overflow-hidden">
-
-      {/* Sidebar */}
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-      {/* Content area */}
-      <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-
-        {/*  Site header */}
-        <Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
-
-        <main className="grow">
-          <div className="px-4 sm:px-6 lg:px-8 py-8 w-full max-w-9xl mx-auto">
-
-            {/* Dashboard actions */}
-            <div className="sm:flex sm:justify-between sm:items-center mb-8">
-
-              {/* Left: Title */}
-              <div className="mb-4 sm:mb-0">
-                <h1 className="text-2xl md:text-3xl text-gray-800 dark:text-gray-100 font-bold">Dashboard</h1>
-              </div>
-
-              {/* Right: Actions */}
-              <div className="grid grid-flow-col sm:auto-cols-max justify-start sm:justify-end gap-2">
-                {/* Filter button */}
-                <FilterButton align="right" />
-                {/* Datepicker built with React Day Picker */}
-                <Datepicker align="right" />
-                {/* Add view button */}
-                <button className="btn bg-gray-900 text-gray-100 hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-800 dark:hover:bg-white">
-                  <svg className="fill-current shrink-0 xs:hidden" width="16" height="16" viewBox="0 0 16 16">
-                    <path d="M15 7H9V1c0-.6-.4-1-1-1S7 .4 7 1v6H1c-.6 0-1 .4-1 1s.4 1 1 1h6v6c0 .6.4 1 1 1s1-.4 1-1V9h6c.6 0 1-.4 1-1s-.4-1-1-1z" />
-                  </svg>
-                  <span className="max-xs:sr-only">Add View</span>
-                </button>                
-              </div>
-
-            </div>
-
-            {/* Cards */}
-            <div className="grid grid-cols-12 gap-6">
-
-              {/* Line chart (Acme Plus) */}
-              <DashboardCard01 />
-              {/* Line chart (Acme Advanced) */}
-              <DashboardCard02 />
-              {/* Line chart (Acme Professional) */}
-              <DashboardCard03 />
-              {/* Bar chart (Direct vs Indirect) */}
-              <DashboardCard04 />
-              {/* Line chart (Real Time Value) */}
-              <DashboardCard05 />
-              {/* Doughnut chart (Top Countries) */}
-              <DashboardCard06 />
-              {/* Table (Top Channels) */}
-              <DashboardCard07 />
-              {/* Line chart (Sales Over Time) */}
-              <DashboardCard08 />
-              {/* Stacked bar chart (Sales VS Refunds) */}
-              <DashboardCard09 />
-              {/* Card (Customers) */}
-              <DashboardCard10 />
-              {/* Card (Reasons for Refunds) */}
-              <DashboardCard11 />
-              {/* Card (Recent Activity) */}
-              <DashboardCard12 />
-              {/* Card (Income/Expenses) */}
-              <DashboardCard13 />
-              
-            </div>
-
-          </div>
-        </main>
-
-      
-
-      </div>
+    <div
+      className={`relative overflow-hidden bg-gray-100 dark:bg-gray-800 animate-[heroReveal_0.7s_ease-out_both] motion-reduce:animate-none ${className}`}
+      style={{ animationDelay: `${index * 120}ms` }}
+    >
+      {image?.image ? (
+        <img
+          src={image.image}
+          alt={image.alt || ""}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <div
+          className="flex h-full w-full items-center justify-center"
+          style={{
+            background:
+              "linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 6%, transparent))",
+            color: "var(--accent)",
+          }}
+          aria-hidden="true"
+        >
+          <svg
+            width="28"
+            height="28"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.7"
+          >
+            <rect x="3" y="4" width="18" height="16" rx="3" />
+            <circle cx="9" cy="10" r="1.5" />
+            <path d="M21 16l-5-5-8 9" />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
 
-export default Dashboard;
+export default function Dashboard({ onCtaClick }) {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/dashboard/", {
+      credentials: "include",
+      signal: controller.signal,
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then(setData)
+      .catch((err) => {
+        if (err?.name !== "AbortError") setData(FALLBACK);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  const hero = data;
+  const [main, topSide, bottomSide] = hero?.images ?? [];
+  const showCta = hero?.cta_label && (hero.cta_url || onCtaClick);
+
+  const ctaClass =
+    "inline-flex items-center rounded-xl px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--accent)] dark:focus-visible:ring-offset-gray-900";
+
+  return (
+    
+    <section className="relative mb-6 overflow-hidden rounded-3xl bg-white shadow dark:bg-gray-900 dark:shadow-black/30">
+      {/* soft accent glow, sits behind everything */}
+      <TopBar/>
+      <div
+        className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl"
+        style={{ backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)" }}
+        aria-hidden="true"
+      />
+
+      <div className="relative grid items-center gap-10 px-6 py-10 md:grid-cols-[1.1fr_1fr] md:px-12 md:py-14">
+        {/* Text */}
+        <div className="max-w-lg">
+          {hero ? (
+            <>
+              <h2 className="text-3xl font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-100 md:text-4xl">
+                {hero.title}
+              </h2>
+
+              {hero.subtitle && (
+                <p className="mt-4 text-base leading-relaxed text-gray-600 dark:text-gray-400">
+                  {hero.subtitle}
+                </p>
+              )}
+
+              {showCta && (
+                <div className="mt-8">
+                  {hero.cta_url ? (
+                    <a
+                      href={hero.cta_url}
+                      className={ctaClass}
+                      style={{ backgroundColor: "var(--accent)" }}
+                    >
+                      {hero.cta_label}
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={onCtaClick}
+                      className={ctaClass}
+                      style={{ backgroundColor: "var(--accent)" }}
+                    >
+                      {hero.cta_label}
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="animate-pulse space-y-4" aria-hidden="true">
+              <div className="h-9 w-4/5 rounded-lg bg-gray-200 dark:bg-gray-800" />
+              <div className="h-9 w-3/5 rounded-lg bg-gray-200 dark:bg-gray-800" />
+              <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-800" />
+              <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-800" />
+            </div>
+          )}
+        </div>
+
+        {/* Image mosaic */}
+        <div className="relative mx-auto w-full max-w-md md:max-w-none">
+          <div className="grid grid-cols-5 grid-rows-2 gap-3 md:gap-4">
+            <div className="relative col-span-3 row-span-2">
+              {/* offset accent frame */}
+              <div
+                className="absolute inset-0 translate-x-2 translate-y-2 rounded-[2rem] border-2 opacity-70"
+                style={{ borderColor: "var(--accent)" }}
+                aria-hidden="true"
+              />
+              <Frame image={main} index={0} className="relative h-full min-h-[18rem] rounded-[2rem]" />
+            </div>
+            <Frame image={topSide} index={1} className="col-span-2 aspect-square rounded-2xl" />
+            <Frame image={bottomSide} index={2} className="col-span-2 aspect-square rounded-full" />
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes heroReveal {
+          from { opacity: 0; transform: scale(0.96); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </section>
+  );
+}
+

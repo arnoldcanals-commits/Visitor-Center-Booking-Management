@@ -103,7 +103,7 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/" element={<Home openAuth={openAuth} />} />
+                <Route path="/" element={<Dashboard />} />
                 <Route path="/information" element={<InformationView />} />
                 <Route path="/register" element={<RegisterAndLogout />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
@@ -111,7 +111,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/test" element={<Test />} />
-                <Route path="/packages" element={<PackagesList />} />
+                <Route path="/packages" element={<Home openAuth={openAuth} />} />
      
                 <Route path="/packages/:id" element={<PackageView />} />
                 <Route path="/packages/:id/edit" element={<PackageEdit />} />

@@ -40,3 +40,27 @@ class InformationListView(generics.ListAPIView):
     permission_classes = [AllowAny] 
     queryset = Information.objects.all()
     serializer_class = InformationSerializer
+
+from rest_framework import generics
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
+
+from ..models import DashboardHero
+from ..serializers import DashboardHeroSerializer
+
+
+class DashboardHeroView(generics.RetrieveAPIView):
+    """GET /api/dashboard/ -> the newest active hero with its images."""
+
+    serializer_class = DashboardHeroSerializer
+    permission_classes = [AllowAny]  # switch to IsAuthenticated if needed
+
+    def get_object(self):
+        hero = (
+            DashboardHero.objects.filter(is_active=True)
+            .prefetch_related("images")
+            .first()
+        )
+        if hero is None:
+            raise NotFound("No active dashboard hero.")
+        return hero

@@ -12,10 +12,12 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   BadgeCheck,
+  Home,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: Home },
+  { to: "/packages", label: "Packages", icon: LayoutDashboard },
   { to: "/booking/my/", label: "My Bookings", icon: CalendarCheck, authRequired: true },
   { to: "/guests/", label: "Guests", icon: Users, authRequired: true },
   { to: "/permit/", label: "Permit", icon: BadgeCheck, authRequired: true },

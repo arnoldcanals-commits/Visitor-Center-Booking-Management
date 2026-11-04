@@ -43,3 +43,21 @@ class InformationSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = fields
+
+from rest_framework import serializers
+
+from ..models import DashboardHero, DashboardImage
+
+
+class DashboardImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DashboardImage
+        fields = ["id", "image", "alt", "order"]
+
+
+class DashboardHeroSerializer(serializers.ModelSerializer):
+    images = DashboardImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DashboardHero
+        fields = ["id", "title", "subtitle", "cta_label", "cta_url", "images"]

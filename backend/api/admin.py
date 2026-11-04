@@ -259,3 +259,16 @@ class EventStationGuestCheckAdmin(admin.ModelAdmin):
 @admin.register(EventStationGuideCheck)
 class EventStationGuideCheckAdmin(admin.ModelAdmin):
     list_display = ("event_station_check", "guide")
+
+from .models import DashboardHero, DashboardImage
+ 
+ 
+class DashboardImageInline(admin.TabularInline):
+    model = DashboardImage
+    extra = 1
+ 
+ 
+@admin.register(DashboardHero)
+class DashboardHeroAdmin(admin.ModelAdmin):
+    list_display = ("title", "is_active", "updated_at")
+    inlines = [DashboardImageInline]

@@ -997,3 +997,37 @@ class Information(BaseModel):
 
     def __str__(self):
         return f"{self.category} → {self.sub_category or 'General'}: {self.title}"
+
+
+
+
+class DashboardHero(models.Model):
+    """Text content for the dashboard hero. The newest active row is served."""
+
+    title = models.CharField(max_length=120)
+    subtitle = models.TextField(blank=True)
+    cta_label = models.CharField(max_length=40, blank=True)
+    cta_url = models.CharField(max_length=200, blank=True)
+    is_active = models.BooleanField(default=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    def __str__(self):
+        return self.title
+
+
+class DashboardImage(models.Model):
+    hero = models.ForeignKey(
+        DashboardHero, related_name="images", on_delete=models.CASCADE
+    )
+    image = models.ImageField(upload_to="dashboard/")
+    alt = models.CharField(max_length=140, blank=True)
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.hero_id} / {self.order}"
