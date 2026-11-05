@@ -458,3 +458,64 @@ class AdminSiteConfigurationView(AdminRetrieveUpdateDestroyView):
 class AdminSystemSettingView(AdminRetrieveUpdateDestroyView):
     queryset = SystemSetting.objects.all()
     serializer_class = AdminSystemSettingSerializer
+
+
+from rest_framework import generics, viewsets
+from rest_framework.exceptions import NotFound
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import AllowAny, IsAdminUser
+
+from ..models import DashboardHero, DashboardImage
+from ..serializers import (
+    DashboardHeroAdminSerializer,
+    DashboardHeroSerializer,
+    DashboardImageAdminSerializer,
+)
+
+
+# ---------- Public ----------
+
+class DashboardHeroView(generics.RetrieveAPIView):
+    """GET /api/dashboard/ -> the newest active hero with its images."""
+
+    serializer_class = DashboardHeroSerializer
+    permission_classes = [AllowAny]  # switch to IsAuthenticated if needed
+
+    def get_object(self):
+        hero = (
+            DashboardHero.objects.filter(is_active=True)
+            .prefetch_related("images")
+            .first()
+        )
+        if hero is None:
+            raise NotFound("No active dashboard hero.")
+        return hero
+
+
+# ---------- Admin ----------
+# IsAdminUser checks user.is_staff. If your app uses a custom role or
+# is_superuser, swap in your own permission class here.
+
+class DashboardHeroAdminViewSet(viewsets.ModelViewSet):
+    """/api/dashboard/admin/heroes/  (list, create, retrieve, update, delete)"""
+
+    queryset = DashboardHero.objects.prefetch_related("images")
+    serializer_class = DashboardHeroAdminSerializer
+    permission_classes = [IsAdminUser]
+
+
+class DashboardImageAdminViewSet(viewsets.ModelViewSet):
+    """/api/dashboard/admin/images/?hero=<id>  (multipart upload supported)"""
+
+    serializer_class = DashboardImageAdminSerializer
+    permission_classes = [IsAdminUser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_queryset(self):
+        qs = DashboardImage.objects.all()
+        hero = self.request.query_params.get("hero")
+        return qs.filter(hero_id=hero) if hero else qs
+
+    def perform_destroy(self, instance):
+        instance.image.delete(save=False)  # remove the file from storage too
+        instance.delete()

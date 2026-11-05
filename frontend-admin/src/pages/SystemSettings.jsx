@@ -13,11 +13,12 @@ import {
   Image,
   Search,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  LayoutTemplate,
 } from "lucide-react";
 import EditableField from "../components/SystemSettings/EditableField";
 import AccentBadge from "../components/AccentBadge";
-
+import HeroManager from "../components/SystemSettings/HeroManager";
 const LONG_PRESS_MS = 500;
 
 export default function SystemSettings() {
@@ -215,9 +216,12 @@ export default function SystemSettings() {
       {/* NAVIGATION TABS */}
       <nav className="flex gap-10 border-b border-slate-200 dark:border-slate-800 mb-8 overflow-x-auto scrollbar-hide">
         {[
+
           { id: "branding", label: "Site Identity", icon: Globe },
+          { id: "hero", label: "Dashboard Hero", icon: LayoutTemplate },
           { id: "faq", label: "FAQs", icon: HelpCircle },
           { id: "info", label: "Public Info", icon: Info },
+          
           { id: "logic", label: "Variables", icon: Database },
           { id: "audit", label: "Audit Log", icon: Activity },
         ].map((tab) => (
@@ -270,6 +274,8 @@ export default function SystemSettings() {
             </div>
           )}
 
+        {activeTab === "hero" && <HeroManager />}
+          
           {activeTab === "faq" && (
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">
               {faqs.length > 0 ? faqs.map((f) => (

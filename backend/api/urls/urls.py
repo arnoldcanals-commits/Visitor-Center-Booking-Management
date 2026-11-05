@@ -1,6 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from django.conf import settings
+
 from django.conf.urls.static import static
 
 # Import all admin views from your local views file
@@ -36,6 +37,8 @@ router.register(r'notifications', NotificationViewSet, basename='notification')
 from api.views import UserAdminViewSet
 
 router.register(r"site_admin/users", UserAdminViewSet, basename="admin-user")
+router.register("site_admin/dashboard/heroes", DashboardHeroAdminViewSet, basename="dashboard-admin-hero")
+router.register("site_admin/dashboard/images", DashboardImageAdminViewSet, basename="dashboard-admin-image")
 # ============================================================
 # URLPATTERNS
 # ============================================================

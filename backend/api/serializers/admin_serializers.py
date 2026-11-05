@@ -458,3 +458,58 @@ class AdminFAQSerializer(AdminBaseSerializer):
 class AdminInformationSerializer(AdminBaseSerializer):
     class Meta(AdminBaseSerializer.Meta):
         model = Information
+
+from rest_framework import serializers
+
+from ..models import DashboardHero, DashboardImage
+
+MAX_IMAGE_MB = 5
+
+
+# ---------- Public (read-only) ----------
+
+class DashboardImageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DashboardImage
+        fields = ["id", "image", "alt", "order"]
+
+
+class DashboardHeroSerializer(serializers.ModelSerializer):
+    images = DashboardImageSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DashboardHero
+        fields = ["id", "title", "subtitle", "cta_label", "cta_url", "images"]
+
+
+# ---------- Admin (read/write) ----------
+
+class DashboardImageAdminSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = DashboardImage
+        fields = ["id", "hero", "image", "alt", "order"]
+
+    def validate_image(self, file):
+        if file.size > MAX_IMAGE_MB * 1024 * 1024:
+            raise serializers.ValidationError(
+                f"Image must be {MAX_IMAGE_MB} MB or smaller."
+            )
+        return file
+
+
+class DashboardHeroAdminSerializer(serializers.ModelSerializer):
+    images = DashboardImageAdminSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = DashboardHero
+        fields = [
+            "id",
+            "title",
+            "subtitle",
+            "cta_label",
+            "cta_url",
+            "is_active",
+            "updated_at",
+            "images",
+        ]
+        read_only_fields = ["updated_at"]
