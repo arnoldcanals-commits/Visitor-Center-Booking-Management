@@ -158,7 +158,7 @@ EMAIL_HOST_USER = env('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD').replace(' ', '')
 DEFAULT_FROM_EMAIL = f'DENR <{EMAIL_HOST_USER}>'
 
-FRONTEND_URL='https://yourdomain.com'
+FRONTEND_URL = env('FRONTEND_URL', default='http://localhost:3000')
 
 CELERY_BROKER_URL = "redis://localhost:6379/0"
 CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
