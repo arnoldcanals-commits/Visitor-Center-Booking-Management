@@ -146,17 +146,17 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 import environ
-env = environ.Env()
 
-environ.Env.read_env()
+env = environ.Env()
+environ.Env.read_env() 
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST='smtp.gmail.com'
-EMAIL_PORT='587'
-EMAIL_USE_TLS='True'
-EMAIL_HOST_USER='aposmart2026@gmail.com'
-EMAIL_HOST_PASSWORD="aposmart2026"
-DEFAULT_FROM_EMAIL='DENR <aposmart2026@gmail.com>'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD').replace(' ', '')
+DEFAULT_FROM_EMAIL = f'DENR <{EMAIL_HOST_USER}>'
 
 FRONTEND_URL='https://yourdomain.com'
 
