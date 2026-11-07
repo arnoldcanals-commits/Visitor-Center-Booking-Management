@@ -49,7 +49,7 @@ class GuestViewSet(viewsets.ModelViewSet):
         if not user.is_authenticated:
             return Guest.objects.none()
 
-        return Guest.objects.filter(owner=user).order_by("-created_at")
+        return Guest.objects.filter(owner=user, is_active=True).order_by("-created_at")
 
     def get_serializer_class(self):
         """

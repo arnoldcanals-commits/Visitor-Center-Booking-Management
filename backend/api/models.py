@@ -503,7 +503,13 @@ class Guest(BaseModel):
     local = models.BooleanField(default=False)
 
     class Meta:
-        unique_together = ("owner", "full_name", "id_number")
+        constraints = [
+        models.UniqueConstraint(
+            fields=["owner", "full_name", "id_number"],
+            condition=models.Q(is_active=True),
+            name="unique_active_guest",
+        )
+    ]
 
     def save(self, *args, **kwargs):
         if self.pk:
