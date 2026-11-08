@@ -4,7 +4,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from api.models import BaseModel
 from django.core.validators import MinValueValidator, MaxValueValidator
-
+from django.db import transaction
+from django.utils import timezone
 
 class Location(BaseModel):
     name = models.CharField(max_length=200)
@@ -102,6 +103,23 @@ class Transportation(BaseModel):
     )
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, blank=True, null=True)
+
+    driver_accepted_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text="When the assigned driver accepted this trip. Reset if the driver changes.",
+    )
+
+    def save(self, *args, **kwargs):
+        # A newly assigned driver must accept for themselves, so a reassignment
+        # clears the previous driver's acceptance.
+        if self.pk:
+            previous = (
+                type(self).objects.filter(pk=self.pk).values_list("driver_id", flat=True).first()
+            )
+            if previous != self.driver_id:
+                self.driver_accepted_at = None
+        super().save(*args, **kwargs)
 
     # ------------------------------------------------------------------
     # Derived from vehicle
@@ -345,3 +363,172 @@ class TransportPassenger(BaseModel):
 
     def __str__(self):
         return f"{self.name} ({self.transportation.title})"
+
+
+
+
+
+class TransportReservation(BaseModel):
+    """
+    A tourist's request to ride a Transportation trip with some of their saved guests.
+    Pending until an admin approves (guests become TransportPassenger rows) or rejects it.
+    """
+
+    STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("approved", "Approved"),
+        ("rejected", "Rejected"),
+    ]
+
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="transport_reservations",
+    )
+    transportation = models.ForeignKey(
+        Transportation,
+        on_delete=models.CASCADE,
+        related_name="reservation_requests",
+    )
+    boarding_stop = models.ForeignKey(
+        TransportationStop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reservation_boardings",
+        help_text="Blank = boards at the route's origin.",
+    )
+    alighting_stop = models.ForeignKey(
+        TransportationStop,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reservation_alightings",
+        help_text="Blank = rides to the route's final destination.",
+    )
+    notes = models.CharField(max_length=300, blank=True, null=True)
+
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reviewed_transport_reservations",
+    )
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+    rejection_reason = models.CharField(max_length=300, blank=True, null=True)
+
+    def clean(self):
+        super().clean()
+        if self.boarding_stop and self.boarding_stop.transportation_id != self.transportation_id:
+            raise ValidationError("Boarding stop must belong to this trip.")
+        if self.alighting_stop and self.alighting_stop.transportation_id != self.transportation_id:
+            raise ValidationError("Alighting stop must come from this trip.")
+        if self.boarding_stop and self.alighting_stop:
+            if self.boarding_stop.sequence >= self.alighting_stop.sequence:
+                raise ValidationError("Alighting stop must come after boarding stop.")
+
+    # ------------------------------------------------------------------
+    # Review actions (call these from admin / a staff page)
+    # ------------------------------------------------------------------
+    def approve(self, reviewer=None):
+        """
+        Approve and add every requested guest to the trip as a TransportPassenger
+        (status "reserved"). All-or-nothing: if any guest doesn't fit (seat capacity
+        is checked per segment by TransportPassenger.save), nothing is created and a
+        ValidationError is raised.
+        """
+        with transaction.atomic():
+            reservation = type(self).objects.select_for_update().get(pk=self.pk)
+            if reservation.status != "pending":
+                raise ValidationError("Only pending requests can be approved.")
+
+            trip = Transportation.objects.select_for_update().get(
+                pk=reservation.transportation_id
+            )
+            if trip.status in ("Cancelled", "Completed"):
+                raise ValidationError("This trip is no longer available.")
+
+            for travel_guest in reservation.travel_guests.select_related("guest"):
+                passenger = TransportPassenger(
+                    transportation=trip,
+                    name=travel_guest.guest.full_name,
+                    boarding_stop=reservation.boarding_stop,
+                    alighting_stop=reservation.alighting_stop,
+                    status="reserved",
+                )
+                passenger.save()  # capacity / validation errors roll everything back
+                travel_guest.passenger = passenger
+                travel_guest.save()
+
+            reservation.status = "approved"
+            reservation.reviewed_by = reviewer
+            reservation.reviewed_at = timezone.now()
+            reservation.rejection_reason = None
+            reservation.save()
+
+        self.refresh_from_db()
+
+    def reject(self, reviewer=None, reason=""):
+        with transaction.atomic():
+            reservation = type(self).objects.select_for_update().get(pk=self.pk)
+            if reservation.status != "pending":
+                raise ValidationError("Only pending requests can be rejected.")
+            reservation.status = "rejected"
+            reservation.reviewed_by = reviewer
+            reservation.reviewed_at = timezone.now()
+            reservation.rejection_reason = (reason or "").strip()[:300] or None
+            reservation.save()
+
+        self.refresh_from_db()
+
+    def __str__(self):
+        return f"Reservation #{self.pk} – {self.transportation.title} ({self.status})"
+
+
+class TravelGuest(BaseModel):
+    """A saved Guest included in a TransportReservation (same idea as BookingGuest)."""
+
+    reservation = models.ForeignKey(
+        TransportReservation,
+        on_delete=models.CASCADE,
+        related_name="travel_guests",
+    )
+    guest = models.ForeignKey(
+        "api.Guest",
+        on_delete=models.CASCADE,
+        related_name="travel_requests",
+    )
+    # Filled in when the reservation is approved.
+    passenger = models.OneToOneField(
+        TransportPassenger,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="travel_guest",
+    )
+
+    def clean(self):
+        super().clean()
+        if not self.reservation_id or not self.guest_id:
+            return
+
+        requester = self.reservation.requester
+
+        # Admin/staff bypass (same rule as BookingGuest)
+        if requester.is_staff or requester.is_superuser:
+            return
+
+        if self.guest.owner and self.guest.owner_id != requester.pk:
+            raise ValidationError("You can only request your own guests.")
+
+    class Meta:
+        unique_together = ("reservation", "guest")
+        indexes = [
+            models.Index(fields=["reservation"]),
+            models.Index(fields=["guest"]),
+        ]
+
+    def __str__(self):
+        return f"{self.guest.full_name} → Reservation {self.reservation_id}"

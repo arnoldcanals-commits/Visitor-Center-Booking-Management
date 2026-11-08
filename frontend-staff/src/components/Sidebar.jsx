@@ -75,6 +75,16 @@ const STATION_CATEGORIES = [
   },
 ];
 
+const DRIVER_CATEGORIES = [
+  {
+    name: "Overview",
+    links: [{ name: "Dashboard", to: "dashboard", icon: Home }],
+  },
+  {
+    name: "Account",
+    links: [{ name: "Profile", to: "profile", icon: UserCircle }],
+  },
+];
 // ===================================================
 // SIDEBAR
 // ===================================================
@@ -90,16 +100,20 @@ export default function Sidebar({ children }) {
   const isStaff = !!staffCtx?.staffData;
   const isGuide = !!guideCtx?.guideData;
   const isStationStaff = !!stationCtx?.stationData;
+  // Driver is decided by role (not by a data context) so it works no matter where
+  // DriverDataProvider is mounted, and is checked first so it can't be shadowed.
+  const isDriver = user?.role === "driver";
 
   let categories = GUIDE_CATEGORIES;
-  if (isStaff) categories = STAFF_CATEGORIES;
+  if (isDriver) categories = DRIVER_CATEGORIES;
+  else if (isStaff) categories = STAFF_CATEGORIES;
   else if (isStationStaff) categories = STATION_CATEGORIES;
   else if (isGuide) categories = GUIDE_CATEGORIES;
 
   // user comes from AuthContext (decoded JWT + merged profile fields)
   const userName =
     user?.username || user?.first_name || user?.name || user?.email ||
-    (isStaff ? "Staff" : isStationStaff ? "Station Staff" : isGuide ? "Tour Guide" : "User");
+    (isDriver ? "Driver" : isStaff ? "Staff" : isStationStaff ? "Station Staff" : isGuide ? "Tour Guide" : "User");
 
   // Track expanded/collapsed state per category, default all open
   const [expanded, setExpanded] = useState(() =>

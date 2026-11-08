@@ -1,5 +1,6 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useContext } from "react";
 import api from "../api";
+import { AuthContext } from "../components/Auth";
 import TopBar from "../components/TopBar";
 import {
   Bus,
@@ -16,8 +17,10 @@ import {
   SlidersHorizontal,
   LayoutGrid,
   List as ListIcon,
+  Ticket,
 } from "lucide-react";
 import LoadingIndicator from "../components/LoadingIndicator";
+import ReservationRequestModal from "../components/Travel/ReservationRequestModal";
 const STATUS_CHOICES = ["Scheduled", "Departed", "Delayed", "Cancelled", "Completed"];
 
 const STATUS_COLORS = {
@@ -154,8 +157,38 @@ const SeatBadge = ({ item }) => {
   );
 };
 
+// --- Reserve button / status (shared by the card and the row) ---
+// status: "pending" | "approved" | undefined  (the signed-in user's latest request for this trip)
+const ReserveButton = ({ item, status, onClick }) => {
+  if (item.status === "Cancelled" || item.status === "Completed") return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {status === "approved" && (
+        <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-700">
+          Reservation approved
+        </span>
+      )}
+      {status === "pending" ? (
+        <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">
+          Request pending
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={onClick}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-white rounded-lg px-3 py-1.5 transition hover:opacity-90"
+          style={{ backgroundColor: "var(--accent)" }}
+        >
+          <Ticket size={13} />
+          Request reservation
+        </button>
+      )}
+    </div>
+  );
+};
+
 // --- Grid card ---
-function TransportationCard({ item }) {
+function TransportationCard({ item, reservationStatus, onRequest }) {
   const { Icon, color, tagline } = getVehicleVibe(item.category);
   const origin = originStop(item);
   const destination = destinationStop(item);
@@ -230,12 +263,19 @@ function TransportationCard({ item }) {
           Driver: {renderDriver(item.driver)} • Owner: {item.owner || "—"}
         </div>
       </div>
+
+      {/* onRequest is only passed when the visitor is logged in */}
+      {onRequest && (
+        <div className="mt-3">
+          <ReserveButton item={item} status={reservationStatus} onClick={onRequest} />
+        </div>
+      )}
     </div>
   );
 }
 
 // --- List row ---
-function TransportationRow({ item }) {
+function TransportationRow({ item, reservationStatus, onRequest }) {
   const { Icon, color } = getVehicleVibe(item.category);
   const origin = originStop(item);
   const destination = destinationStop(item);
@@ -282,6 +322,12 @@ function TransportationRow({ item }) {
           {item.status}
         </span>
       )}
+
+      {onRequest && (
+        <div className="shrink-0">
+          <ReserveButton item={item} status={reservationStatus} onClick={onRequest} />
+        </div>
+      )}
     </div>
   );
 }
@@ -292,6 +338,44 @@ export default function Travel() {
   const [error, setError] = useState(null);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [viewMode, setViewMode] = useState("grid"); // "grid" | "list"
+
+  // Reservations are only available to logged-in users; visitors just see the trips.
+  const auth = useContext(AuthContext);
+  const isAuthenticated = !!auth?.isAuthenticated;
+
+  // Reservation requests: the trip being requested + the user's own requests
+  const [reserveItem, setReserveItem] = useState(null);
+  const [reservations, setReservations] = useState([]);
+
+  const loadReservations = async () => {
+    if (!isAuthenticated) {
+      setReservations([]);
+      return;
+    }
+    try {
+      const res = await api.get("/api/transport-reservations/");
+      setReservations(res.data || []);
+    } catch {
+      setReservations([]);
+    }
+  };
+
+  useEffect(() => {
+    loadReservations();
+    if (!isAuthenticated) setReserveItem(null); // logged out: close any open request form
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
+
+  // Latest relevant state per trip: "pending" wins over "approved"; rejected is ignored
+  const reservationStatusByTrip = useMemo(() => {
+    const map = {};
+    reservations.forEach((r) => {
+      const tripId = r.transportation?.id;
+      if (r.status === "pending") map[tripId] = "pending";
+      else if (r.status === "approved" && map[tripId] !== "pending") map[tripId] = "approved";
+    });
+    return map;
+  }, [reservations]);
 
   // Primary (always visible) filters. `origin`/`destination` replace the old
   // pickup_location/dropoff_location text filters — they now match against
@@ -613,13 +697,23 @@ useEffect(() => {
                 {viewMode === "grid" ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {group.items.map((item) => (
-                      <TransportationCard key={item.id} item={item} />
+                      <TransportationCard
+                        key={item.id}
+                        item={item}
+                        reservationStatus={reservationStatusByTrip[item.id]}
+                        onRequest={isAuthenticated ? () => setReserveItem(item) : undefined}
+                      />
                     ))}
                   </div>
                 ) : (
                   <div className="space-y-2">
                     {group.items.map((item) => (
-                      <TransportationRow key={item.id} item={item} />
+                      <TransportationRow
+                        key={item.id}
+                        item={item}
+                        reservationStatus={reservationStatusByTrip[item.id]}
+                        onRequest={isAuthenticated ? () => setReserveItem(item) : undefined}
+                      />
                     ))}
                   </div>
                 )}
@@ -628,6 +722,14 @@ useEffect(() => {
           </div>
         )}
       </div>
+
+      {reserveItem && (
+        <ReservationRequestModal
+          item={reserveItem}
+          onClose={() => setReserveItem(null)}
+          onSubmitted={loadReservations}
+        />
+      )}
     </div>
   );
 }

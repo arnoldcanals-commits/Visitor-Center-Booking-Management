@@ -28,6 +28,10 @@ import TourGuideEventDetail from "./pages/tourguide/TourGuideEventDetail";
 import StationDashboard from "./pages/station/Dashboard";
 import StationProfile from "./pages/station/Profile";
 
+// ================= DRIVER STAFF PAGES =================
+import DriverDashboard from "./pages/driver/dashboard";
+import DriverProfile from "./pages/driver/profile";
+
 // ================= GUARDS & CONTEXT =================
 import RoleRoute from "./components/RoleRoute";
 import { AuthProvider, AuthContext } from "./contexts/AuthContext";
@@ -35,6 +39,7 @@ import { StaffDataProvider } from "./contexts/StaffDataContext";
 import { StaffBillingProvider } from "./contexts/StaffBillingContext";
 import { TourGuideDataProvider } from "./contexts/TourGuideDataContext";
 import { StationProvider } from "./contexts/StationStaffDataContext";
+import { DriverDataProvider } from "./contexts/DriverDataContext";
 
 // ================= LAYOUT =================
 import Layout from "./components/Layout";
@@ -58,6 +63,10 @@ function RootRedirect() {
 
   if (user.role === "station_staff") {
     return <Navigate to="/station" replace />;
+  }
+
+   if (user.role === "driver") {
+    return <Navigate to="/driver" replace />;
   }
 
   // staff / admin
@@ -171,6 +180,21 @@ function AppRoutes() {
         <Route path="profile" element={<TourGuideProfile />} />
         <Route path="events/:id" element={<TourGuideEventDetail />} />
 
+      </Route>
+
+        <Route
+        path="/driver"
+        element={
+          <RoleRoute allow={["driver"]}>
+            <DriverDataProvider>
+              <Layout />
+            </DriverDataProvider>
+          </RoleRoute>
+        }
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<DriverDashboard />} />
+        <Route path="profile" element={<DriverProfile />} />
       </Route>
 
       {/* ================= FALLBACK ================= */}

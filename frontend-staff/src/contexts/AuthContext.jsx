@@ -4,7 +4,7 @@ import { jwtDecode } from "jwt-decode";
 
 export const AuthContext = createContext();
 
-const STAFF_ROLES = ["tour_guide", "staff", "station_staff", "admin"];
+const STAFF_ROLES = ["tour_guide", "staff", "station_staff", "admin","driver"];
 const DEFAULT_ACCENT = "#8b5cf6";
 
 // Returns true/false if we can determine expiry, or null if the token
@@ -222,7 +222,7 @@ export const AuthProvider = ({ children }) => {
   const isBookingStaff = user?.role === "staff";
   const isStationStaff = user?.role === "station_staff";
   const isAdmin = user?.role === "admin";
-
+  const isDriver = user?.role === "driver";
   return (
     <AuthContext.Provider
       value={{
@@ -239,6 +239,7 @@ export const AuthProvider = ({ children }) => {
         isBookingStaff,
         isStationStaff,
         isAdmin,
+        isDriver,
       }}
     >
       {!loading && children}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import api from '../api'; // Your axios instance, not raw fetch
 import TransportationStopManager from '../components/transport/TransportationStopManager';
 import TransportPassengerManager from '../components/transport/TransportPassengerManager';
+import TransportReservationManager from '../components/transport/TransportReservationManager';
 import { MapPin } from "lucide-react";
 import { AuthContext } from '../contexts/AuthContext'; // Pull in your auth context
 import VehicleManager from './Vehicle';
@@ -9,7 +10,7 @@ import LocationManager from './Location';
 import {
   Car, Search, LayoutGrid, List, ChevronLeft, ChevronRight,
   Calendar, X, SlidersHorizontal, SquarePen, Trash2, Archive, ArchiveRestore,
-  Power, PowerOff, Eye, EyeOff, Users
+  Power, PowerOff, Eye, EyeOff, Users, Ticket
 } from "lucide-react";
 
 // Converts a Date to the "yyyy-MM-ddTHH:mm" format datetime-local inputs expect,
@@ -50,6 +51,10 @@ export default function Transport() {
   const [error, setError] = useState(null);
   const [stopsManagerItem, setStopsManagerItem] = useState(null); 
   const [passengersManagerItem, setPassengersManagerItem] = useState(null);
+  // Reservations: keep only the trip's id so the manager always sees the freshest item
+  // (seat counts update after an approval), plus pending-request counts per trip.
+  const [reservationsItemId, setReservationsItemId] = useState(null);
+  const [pendingByTrip, setPendingByTrip] = useState({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState(emptyFormData);
@@ -122,9 +127,12 @@ export default function Transport() {
   // ─────────────────────────────────────────────
   // READ — fetch transport records + lookup lists
   // ─────────────────────────────────────────────
-  const fetchItems = async () => {
+  // fetchItems({ silent: true }) refreshes without swapping the page for the loading screen,
+  // so open modals (e.g. the reservations manager) stay mounted.
+  const fetchItems = async (opts) => {
+    const silent = !!opts?.silent;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await api.get('api/admin-transport/transportation/', authHeader());
       setItems(toArray(res.data));
       setError(null);
@@ -157,6 +165,37 @@ export default function Transport() {
       fetchLookups();
     }
   }, [authTokens]);
+
+  // Pending reservation requests per trip, for the badge on each trip's Reservations button
+  const fetchPendingCounts = async () => {
+    try {
+      const res = await api.get('api/admin-transport/reservations/', {
+        params: { status: 'pending' },
+        ...authHeader(),
+      });
+      const counts = {};
+      toArray(res.data).forEach((r) => {
+        const tripId = r.transportation?.id;
+        if (tripId !== undefined) counts[tripId] = (counts[tripId] || 0) + 1;
+      });
+      setPendingByTrip(counts);
+    } catch (err) {
+      console.error('Failed to load pending reservation counts:', err);
+      setPendingByTrip({});
+    }
+  };
+
+  useEffect(() => {
+    if (authTokens) fetchPendingCounts();
+  }, [authTokens]);
+
+  const pendingCount = (id) => pendingByTrip[id] || 0;
+
+  // After an approve/reject: seats may have changed, and the badge count too
+  const handleReservationsChanged = () => {
+    fetchItems({ silent: true });
+    fetchPendingCounts();
+  };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -684,10 +723,16 @@ export default function Transport() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-end space-x-2 border-t border-gray-50 dark:border-gray-700 pt-4 mt-4">
+                  <div className="flex flex-wrap items-center justify-end gap-x-1 gap-y-2 border-t border-gray-50 dark:border-gray-700 pt-4 mt-4">
                     <button onClick={() => openModal(item)} className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Edit</button>
                        <button onClick={() => setStopsManagerItem(item)} className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Route</button>
                        <button onClick={() => setPassengersManagerItem(item)} className="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Passengers</button>
+                    <button onClick={() => setReservationsItemId(item.id)} className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      Reservations
+                      {pendingCount(item.id) > 0 && (
+                        <span className="text-xs rounded-full px-1.5 py-0.5 text-white" style={{ backgroundColor: 'var(--accent)' }}>{pendingCount(item.id)}</span>
+                      )}
+                    </button>
                     <button onClick={() => handleDeactivate(item)} className="text-sm font-medium text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 px-3 py-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">Deactivate</button>
                   </div>
                 </div>
@@ -696,7 +741,7 @@ export default function Transport() {
           ) : (
             <div className="space-y-3">
               {pagedItems.map((item) => (
-                <div key={item.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-wrap md:flex-nowrap items-center gap-4 shadow hover:shadow-sm transition-shadow">
+                <div key={item.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 flex flex-wrap items-center gap-x-4 gap-y-3 shadow hover:shadow-sm transition-shadow">
                   <input
                     type="checkbox"
                     checked={selectedIds.includes(item.id)}
@@ -735,16 +780,22 @@ export default function Transport() {
                   <div className="min-w-[210px]">
                     <TimeRangeBadges departure={item.actual_departure_time} arrival={item.actual_arrival_time} />
                   </div>
-                  <button onClick={() => setStopsManagerItem(item)} title="Manage Route Stops" className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-    <MapPin size={18}/>
-  </button>
-                  <div className="flex items-center gap-2 ml-auto shrink-0">
+                  <div className="flex items-center gap-3 ml-auto shrink-0">
+                    <button onClick={() => setStopsManagerItem(item)} title="Manage Route Stops" className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <MapPin size={18}/>
+                    </button>
                     <button onClick={() => openModal(item)} title="Edit" className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                       <SquarePen size={18}/>
                     </button>
                    <button onClick={() => setPassengersManagerItem(item)} title="Manage Passengers" className="text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
     <Users size={18}/>
   </button>
+                    <button onClick={() => setReservationsItemId(item.id)} title="Reservation Requests" className="relative text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 p-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <Ticket size={18}/>
+                      {pendingCount(item.id) > 0 && (
+                        <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 flex items-center justify-center text-[10px] font-bold rounded-full text-white" style={{ backgroundColor: 'var(--accent)' }}>{pendingCount(item.id)}</span>
+                      )}
+                    </button>
                     <button onClick={() => handleDeactivate(item)} title="Deactivate" className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 p-1.5 rounded-md hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors">
                       <Trash2 size={18}/>
                     </button>
@@ -943,6 +994,12 @@ export default function Transport() {
         isOpen={!!passengersManagerItem}
         onClose={() => setPassengersManagerItem(null)}
         onPassengersChanged={fetchItems}
+      />
+  <TransportReservationManager
+        transportation={items.find((i) => i.id === reservationsItemId) || null}
+        isOpen={reservationsItemId !== null}
+        onClose={() => setReservationsItemId(null)}
+        onChanged={handleReservationsChanged}
       />
   <VehicleManager/>
   <LocationManager/>

@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-STAFF_ROLES = ["tour_guide", "staff", "station_staff", "admin"]
+STAFF_ROLES = ["tour_guide", "staff", "station_staff", "admin","driver"]
 
 
 class StaffTokenObtainPairSerializer(TokenObtainPairSerializer):
