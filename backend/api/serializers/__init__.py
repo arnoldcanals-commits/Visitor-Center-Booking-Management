@@ -11,3 +11,4 @@ from .guest_serializers import *
 from .notif_serializers import *
 from .review_serializers import *
 from .admin_users_serializers import *
+from .admin_package_serializers import *

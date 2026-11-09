@@ -39,6 +39,10 @@ from api.views import UserAdminViewSet
 router.register(r"site_admin/users", UserAdminViewSet, basename="admin-user")
 router.register("site_admin/dashboard/heroes", DashboardHeroAdminViewSet, basename="dashboard-admin-hero")
 router.register("site_admin/dashboard/images", DashboardImageAdminViewSet, basename="dashboard-admin-image")
+
+router.register("site_admin/tour-packages", AdminTourPackageViewSet, basename="admin-tour-package")
+router.register("site_admin/tour-package-images", AdminTourPackageImageViewSet, basename="admin-tour-package-image")
+router.register("site_admin/activities", AdminActivityViewSet, basename="admin-activity")
 # ============================================================
 # URLPATTERNS
 # ============================================================

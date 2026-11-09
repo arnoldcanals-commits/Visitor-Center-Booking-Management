@@ -5,3 +5,4 @@ from .booking_staff_urls import *
 from .station_urls import *
 from .urls import *
 from .guest_urls import *
+from .admin_package import *
