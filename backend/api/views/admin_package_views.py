@@ -10,10 +10,10 @@ from rest_framework.response import Response
 
 from ..models import Activity, TourPackage, TourPackageImage
 from ..serializers import (
-    ActivitySerializer,
-    TourPackageImageSerializer,
-    TourPackageListSerializer,
-    TourPackageSerializer,
+    AdminActivitySerializer,
+    AdminTourPackageImageSerializer,
+    AdminTourPackageListSerializer,
+    AdminTourPackageSerializer,
 )
 
 
@@ -49,8 +49,8 @@ class AdminTourPackageViewSet(viewsets.ModelViewSet):
 
     def get_serializer_class(self):
         if self.action == "list":
-            return TourPackageListSerializer
-        return TourPackageSerializer
+            return AdminTourPackageListSerializer
+        return AdminTourPackageSerializer
 
     def get_queryset(self):
         qs = TourPackage.objects.all()
@@ -88,7 +88,7 @@ class AdminTourPackageImageViewSet(mixins.DestroyModelMixin, viewsets.GenericVie
 
     permission_classes = [IsAdminUser]
     queryset = TourPackageImage.objects.all()
-    serializer_class = TourPackageImageSerializer
+    serializer_class = AdminTourPackageImageSerializer
 
     @action(detail=True, methods=["post"], url_path="set-main")
     def set_main(self, request, pk=None):
@@ -130,7 +130,7 @@ class AdminActivityViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAdminUser]
     queryset = Activity.objects.all()
-    serializer_class = ActivitySerializer
+    serializer_class = AdminActivitySerializer
     pagination_class = None
 
     def get_queryset(self):

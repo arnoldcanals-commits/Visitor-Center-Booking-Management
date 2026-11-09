@@ -8,9 +8,15 @@ export default function PackageCard({ pkg }) {
   const cardRef = useRef(null);
   const [style, setStyle] = useState({});
 
-  const imageUrl = pkg.images?.length
-    ? `${import.meta.env.VITE_API_URL}${pkg.images[0].image}`
-    : "https://via.placeholder.com/300x200";
+ const resolveImage = (path) => {
+  if (!path) return "https://placehold.co/300x200?text=No+Image";
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("//")) return `https:${path}`;
+  const base = (import.meta.env.VITE_API_URL || "").replace(/\/+$/, "");
+  return `${base}/${path.replace(/^\/+/, "")}`;
+};
+
+const imageUrl = resolveImage(pkg.images?.[0]?.image);
 
   const handleMouseMove = (e) => {
     const card = cardRef.current;
@@ -41,6 +47,8 @@ export default function PackageCard({ pkg }) {
         relative
         w-full
         h-full
+        max-w-sm 
+        mx-auto
         flex
         flex-col
         rounded-[1.75rem]

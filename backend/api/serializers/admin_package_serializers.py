@@ -95,14 +95,14 @@ from rest_framework import serializers
 from ..models import Activity, TourPackage, TourPackageImage
 
 
-class TourPackageImageSerializer(serializers.ModelSerializer):
+class AdminTourPackageImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = TourPackageImage
         fields = ["id", "package", "image", "is_main"]
         read_only_fields = ["id", "package", "image"]
 
 
-class TourPackageListSerializer(serializers.ModelSerializer):
+class AdminTourPackageListSerializer(serializers.ModelSerializer):
     """
     Lightweight: used for the paginated list. No `description` (can be large rich text)
     and only the main image instead of the whole gallery.
@@ -131,7 +131,7 @@ class TourPackageListSerializer(serializers.ModelSerializer):
         return TourPackageImageSerializer(mains[0], context=self.context).data
 
 
-class TourPackageSerializer(serializers.ModelSerializer):
+class AdminTourPackageSerializer(serializers.ModelSerializer):
     """Full serializer: retrieve / create / update. Includes the whole gallery."""
 
     images = TourPackageImageSerializer(many=True, read_only=True)
@@ -182,7 +182,7 @@ class TourPackageSerializer(serializers.ModelSerializer):
         return package
 
 
-class ActivitySerializer(serializers.ModelSerializer):
+class AdminActivitySerializer(serializers.ModelSerializer):
     class Meta:
         model = Activity
         fields = ["id", "package", "name", "description", "extra_price", "is_active"]
