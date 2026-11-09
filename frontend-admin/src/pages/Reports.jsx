@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import "../Styles/Reports.css";
 import AccentBadge from '../components/AccentBadge';
+import TravelReports from './Travelreports';
 
 // Set this to your organization's display name — it appears on the printed
 // letterhead. Pull from config/context instead of a constant if you have one.
@@ -226,6 +227,7 @@ const Reports = () => {
     .reduce((s, r) => s + r.total, 0);
 
   const period = describePeriod(filterLevel, dateFilter);
+  const isTravel = reportType === 'travel';
 
   return (
     <div className="reports-page-wrapper dark:bg-gray-900 print:!bg-white " >
@@ -286,7 +288,7 @@ const Reports = () => {
 
       <div className="reports-main-content reports-print-page dark:bg-gray-900">
         {/* Printable Letterhead */}
-        <div className="hidden print:block mb-8 border-b-4 border-gray-900 pb-4 dark:bg-gray-900">
+        <div className={`hidden ${isTravel ? '' : 'print:block'} mb-8 border-b-4 border-gray-900 pb-4 dark:bg-gray-900`}>
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-black uppercase tracking-tight">{ORG_NAME}</h1>
@@ -318,9 +320,11 @@ const Reports = () => {
             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-xl w-fit">
               <button onClick={() => setReportType('booking')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${reportType === 'booking' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}>Financial</button>
               <button onClick={() => setReportType('station')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${reportType === 'station' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}>Stations</button>
+              <button onClick={() => setReportType('travel')} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${reportType === 'travel' ? 'bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-50 shadow-sm' : 'text-gray-400 dark:text-gray-500'}`}>Travel</button>
             </div>
           </div>
 
+          {!isTravel && (
           <div className="flex flex-col items-end gap-2">
             <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-lg no-print">
               {['day', 'month', 'year'].map(lvl => (
@@ -335,6 +339,7 @@ const Reports = () => {
               <button onClick={() => setShowHistory(!showHistory)} className={`p-2.5 rounded-xl border transition-all ${showHistory ? 'bg-[var(--accent)]/10 border-[var(--accent)]/30 text-[var(--accent)]' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-400 dark:text-gray-500'}`} title="History"><History size={20} /></button>
             </div>
           </div>
+          )}
         </header>
 
         {reportType === 'booking' && (
@@ -351,6 +356,9 @@ const Reports = () => {
           </div>
         )}
 
+        {isTravel ? (
+          <TravelReports />
+        ) : (
         <div className="border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-gray-900 print:border-none print:shadow-none print:rounded-none">
           <table className="w-full text-left text-sm border-collapse">
             <thead className="bg-gray-50 dark:bg-gray-800/60 text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase border-b border-gray-200 dark:border-gray-800">
@@ -422,9 +430,10 @@ const Reports = () => {
             )}
           </table>
         </div>
+        )}
 
         {/* Printable sign-off block for a "professional" paper trail */}
-        <div className="hidden print:flex justify-between mt-16 pt-6">
+        <div className={`hidden ${isTravel ? '' : 'print:flex'} justify-between mt-16 pt-6`}>
           <div className="text-center w-56">
             <div className="border-t border-gray-400 pt-2 text-[10px] font-bold uppercase text-gray-500">Prepared by{preparedBy ? `: ${preparedBy}` : ''}</div>
           </div>
@@ -434,7 +443,7 @@ const Reports = () => {
         </div>
       </div>
 
-      {showHistory && (
+      {showHistory && !isTravel && (
         <aside className="reports-history-sidebar no-print dark:bg-gray-900 dark:border-gray-800">
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-black text-[10px] uppercase text-gray-400 dark:text-gray-500 tracking-widest">Saved Records</h2>
@@ -461,6 +470,7 @@ const Reports = () => {
       )}
 
       {/* Actions */}
+      {!isTravel && (
       <div className="fixed bottom-10 right-10 flex flex-col items-end gap-3 no-print">
         <div className="download-group download-options-container">
           <button className="bg-gray-900 dark:bg-gray-800 text-white px-6 py-4 rounded-full shadow-2xl flex items-center gap-3 hover:scale-105 transition-all">
@@ -493,6 +503,7 @@ const Reports = () => {
           <Save size={24} />
         </button>
       </div>
+      )}
     </div>
   );
 };

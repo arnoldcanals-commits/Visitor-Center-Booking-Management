@@ -20,7 +20,7 @@ class GuestSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
-
+    extra_kwargs = {"id_document": {"required": True}}
     def create(self, validated_data):
         """
         Force ownership to the logged-in tourist.

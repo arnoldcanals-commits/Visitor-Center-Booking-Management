@@ -1,11 +1,32 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import api from "../api";
 import { ACCESS_TOKEN } from "../constants";
-import { LayoutGrid, List, UserRoundPen, LockKeyhole, X } from "lucide-react";
+import {
+  LayoutGrid,
+  List,
+  UserRoundPen,
+  LockKeyhole,
+  X,
+  ShieldCheck,
+  CheckSquare,
+  Trash2,
+} from "lucide-react";
 import LoadingIndicator from "../components/LoadingIndicator";
+import TopBar from "../components/TopBar";
+
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
-import TopBar from "../components/TopBar";
+const MAX_ID_FILE_MB = 10;
+
+const EMPTY_FORM = {
+  full_name: "",
+  age: "",
+  gender: "Male", // matches the dropdown's default so "Male" is a real value immediately
+  id_number: "",
+  local: false,
+  id_document: null,
+  id_preview: null,
+};
 
 // Shared accent-tinted "chip" style, matches the pattern used in TopBar/ProfileModal
 const accentChip = {
@@ -13,6 +34,77 @@ const accentChip = {
   color: "var(--accent)",
   borderColor: "color-mix(in srgb, var(--accent) 20%, transparent)",
 };
+
+const isLoggedIn = () => {
+  const token = localStorage.getItem(ACCESS_TOKEN);
+  return !!token && token !== "null" && token !== "undefined";
+};
+
+// =========================
+// Small shared bits (defined outside the component so they aren't
+// re-created on every render, which caused image flicker)
+// =========================
+const LocalBadge = ({ local }) => (
+  <div className="h-6 flex items-center">
+    {local && (
+      <span
+        className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white shadow-sm"
+        style={{ backgroundColor: "var(--accent)" }}
+      >
+        Local discount Eligible
+      </span>
+    )}
+  </div>
+);
+
+const IdDocumentPreview = ({ guest, liveFile }) => {
+  if (liveFile) {
+    return liveFile.isPdf ? (
+      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+        PDF selected — preview unavailable until saved.
+      </p>
+    ) : (
+      <img
+        src={liveFile.url}
+        alt="ID preview"
+        className="w-full h-40 object-cover rounded-md border border-gray-200 dark:border-gray-700 mt-2"
+      />
+    );
+  }
+  if (!guest?.id_document) {
+    return <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">No ID document on file.</p>;
+  }
+  const isPdf = guest.id_document.toLowerCase().endsWith(".pdf");
+  return isPdf ? (
+    <a
+      href={guest.id_document}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-block text-sm underline mt-2"
+      style={{ color: "var(--accent)" }}
+    >
+      View PDF
+    </a>
+  ) : (
+    <img
+      src={guest.id_document}
+      alt={`${guest.full_name} ID`}
+      className="w-full h-40 object-cover rounded-md border border-gray-200 dark:border-gray-700 mt-2"
+    />
+  );
+};
+
+const SelectBox = ({ checked, onChange, label }) => (
+  <input
+    type="checkbox"
+    checked={checked}
+    onChange={onChange}
+    onClick={(e) => e.stopPropagation()}
+    aria-label={label}
+    className="w-5 h-5 shrink-0 cursor-pointer rounded"
+    style={{ accentColor: "var(--accent)" }}
+  />
+);
 
 /**
  * @param {boolean} embedded - true when rendered inside a modal (e.g. ProfileModal's
@@ -25,11 +117,6 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
   const [guests, setGuests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-    const [isLoading, setIsLoading] = useState(true);
-  const isLoggedIn = () => {
-    const token = localStorage.getItem(ACCESS_TOKEN);
-    return !!token && token !== "null" && token !== "undefined";
-  };
   const [authed, setAuthed] = useState(isLoggedIn());
 
   // view + pagination
@@ -37,20 +124,20 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
   const [pageSize, setPageSize] = useState(6);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // batch selection
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [deleting, setDeleting] = useState(false);
+  const deletingRef = useRef(false);
+
   // create/edit modal
   const [formOpen, setFormOpen] = useState(false);
   const [editingGuest, setEditingGuest] = useState(null);
   const [genderChoice, setGenderChoice] = useState("Male"); // dropdown selection
-  const [formData, setFormData] = useState({
-    full_name: "",
-    age: "",
-    gender: "",
-    id_number: "",
-    local: false,
-    id_document: null,
-    id_preview: null,
-  });
+  const [formData, setFormData] = useState(EMPTY_FORM);
   const [formErrors, setFormErrors] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   // view-only modal (list view "view id" / details)
   const [viewingGuest, setViewingGuest] = useState(null);
@@ -68,11 +155,17 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
     setLoading(true);
     setError(null);
 
-     const minDelay = new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second minimum
+    const minDelay = new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second minimum
 
     try {
-        const [res] = await Promise.all([api.get("api/guests/"), minDelay]);
+      const [res] = await Promise.all([api.get("api/guests/"), minDelay]);
       setGuests(res.data);
+      // drop any selected ids that no longer exist
+      setSelectedIds((prev) => {
+        const valid = new Set(res.data.map((g) => g.id));
+        const next = new Set([...prev].filter((id) => valid.has(id)));
+        return next.size === prev.size ? prev : next;
+      });
     } catch (err) {
       console.error("Failed to fetch guests:", err);
       if (err.response?.status === 401) {
@@ -103,20 +196,46 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
   const emptySlots = Math.max(0, pageSize - paginatedGuests.length);
 
   // =========================
+  // Selection handlers
+  // =========================
+  const toggleSelected = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const pageIds = paginatedGuests.map((g) => g.id);
+  const allOnPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  const toggleSelectPage = () => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allOnPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  };
+
+  const exitSelectMode = () => {
+    setSelectMode(false);
+    setSelectedIds(new Set());
+  };
+
+  // =========================
   // Form handlers
   // =========================
   const resetFormState = () => {
-    setFormData({
-      full_name: "",
-      age: "",
-      gender: "",
-      id_number: "",
-      local: false,
-      id_document: null,
-      id_preview: null,
-    });
+    setFormData(EMPTY_FORM);
     setGenderChoice("Male");
     setFormErrors({});
+  };
+
+  const closeForm = () => {
+    if (formData.id_preview) URL.revokeObjectURL(formData.id_preview);
+    setFormOpen(false);
   };
 
   const openCreateForm = () => {
@@ -166,6 +285,26 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
 
   const handleFileChange = (e) => {
     const file = e.target.files[0] || null;
+
+    if (file) {
+      const okType = file.type.startsWith("image/") || file.type === "application/pdf";
+      if (!okType) {
+        setFormErrors((p) => ({ ...p, id_document: "Only image or PDF files are allowed." }));
+        e.target.value = "";
+        return;
+      }
+      if (file.size > MAX_ID_FILE_MB * 1024 * 1024) {
+        setFormErrors((p) => ({ ...p, id_document: `File is too large (max ${MAX_ID_FILE_MB}MB).` }));
+        e.target.value = "";
+        return;
+      }
+    }
+
+    if (formData.id_preview) URL.revokeObjectURL(formData.id_preview); // avoid memory leak
+    setFormErrors((p) => {
+      const { id_document, ...rest } = p;
+      return rest;
+    });
     setFormData((prev) => ({
       ...prev,
       id_document: file,
@@ -185,13 +324,21 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
     if (!formData.gender || !formData.gender.trim()) {
       errors.gender = "Gender is required.";
     }
+    // ID required: a new file, or an existing one when editing
+    if (!formData.id_document && !editingGuest?.id_document) {
+      errors.id_document = "An ID document is required.";
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (submittingRef.current) return; // blocks double-clicks instantly
     if (!validateForm()) return;
+
+    submittingRef.current = true;
+    setSubmitting(true);
 
     try {
       const data = new FormData();
@@ -203,97 +350,92 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
         data.append("id_document", formData.id_document);
       }
 
+      const config = {
+        headers: { "Content-Type": "multipart/form-data" },
+        maxBodyLength: Infinity, // no client-side cap on request size
+        maxContentLength: Infinity,
+        timeout: 120000, // allow slow uploads (2 min)
+      };
+
       if (editingGuest) {
-        await api.patch(`api/guests/${editingGuest.id}/`, data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await api.patch(`api/guests/${editingGuest.id}/`, data, config);
       } else {
-        await api.post("api/guests/", data, {
-          headers: { "Content-Type": "multipart/form-data" },
-        });
+        await api.post("api/guests/", data, config);
       }
-      setFormOpen(false);
+      closeForm();
       fetchGuests();
     } catch (err) {
       console.error("Failed to save guest:", err);
-      alert("Failed to save guest. Please check your input.");
+      if (err.response?.status === 413) {
+        alert("The file is too large for the server. Please use a smaller file.");
+      } else {
+        alert("Failed to save guest. Please check your input.");
+      }
+    } finally {
+      submittingRef.current = false;
+      setSubmitting(false);
     }
   };
 
+  // =========================
+  // Delete handlers
+  // =========================
   const handleDelete = async (guestId) => {
+    if (deletingRef.current) return;
     if (!window.confirm("Remove this guest from your list?")) return;
+
+    deletingRef.current = true;
+    setDeleting(true);
     try {
       await api.delete(`api/guests/${guestId}/`);
       fetchGuests();
     } catch (err) {
       console.error("Failed to delete guest:", err);
       alert("Failed to delete guest.");
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (deletingRef.current || selectedIds.size === 0) return;
+    const ids = [...selectedIds];
+    const noun = ids.length === 1 ? "guest" : "guests";
+    if (!window.confirm(`Remove ${ids.length} selected ${noun} from your list? This can't be undone.`)) return;
+
+    deletingRef.current = true;
+    setDeleting(true);
+    try {
+      // one failure shouldn't stop the rest
+      const results = await Promise.allSettled(ids.map((id) => api.delete(`api/guests/${id}/`)));
+      const failedIds = ids.filter((_, i) => results[i].status === "rejected");
+
+      if (failedIds.length > 0) {
+        console.error("Some deletions failed:", failedIds);
+        alert(`${ids.length - failedIds.length} removed, ${failedIds.length} failed. The failed ones are still selected so you can retry.`);
+        setSelectedIds(new Set(failedIds));
+      } else {
+        exitSelectMode();
+      }
+      fetchGuests();
+    } finally {
+      deletingRef.current = false;
+      setDeleting(false);
     }
   };
 
   // =========================
-  // Small shared bits
-  // =========================
-  const LocalBadge = ({ local }) => (
-    <div className="h-6 flex items-center">
-      {local && (
-        <span
-          className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white shadow-sm"
-          style={{ backgroundColor: "var(--accent)" }}
-        >
-          Local discount Eligible
-        </span>
-      )}
-    </div>
-  );
-
-  const IdDocumentPreview = ({ guest, liveFile }) => {
-    if (liveFile) {
-      return liveFile.isPdf ? (
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">PDF selected — preview unavailable until saved.</p>
-      ) : (
-        <img
-          src={liveFile.url}
-          alt="ID preview"
-          className="w-full h-40 object-cover rounded-md border border-gray-200 dark:border-gray-700 mt-2"
-        />
-      );
-    }
-    if (!guest?.id_document) {
-      return <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">No ID document on file.</p>;
-    }
-    const isPdf = guest.id_document.toLowerCase().endsWith(".pdf");
-    return isPdf ? (
-      
-       <a href={guest.id_document}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-block text-sm underline mt-2"
-        style={{ color: "var(--accent)" }}
-      >
-        View PDF
-      </a>
-    ) : (
-      <img
-        src={guest.id_document}
-        alt={`${guest.full_name} ID`}
-        className="w-full h-40 object-cover rounded-md border border-gray-200 dark:border-gray-700 mt-2"
-      />
-    );
-  };
-
-  // =========================
-  // States — this is now just the part BELOW the header (title/Add Guest
+  // States — this is the part BELOW the header (title/Add Guest
   // button render immediately further down, independent of these states).
-  // The LoadingIndicator itself, and the 1s minDelay in fetchGuests, are
-  // untouched.
   // =========================
   let body;
 
   if (loading) {
     body = (
       <div className="flex justify-center items-center h-40">
-        <LoadingIndicator /> </div>
+        <LoadingIndicator />
+      </div>
     );
   } else if (!authed) {
     body = (
@@ -303,8 +445,8 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
         </div>
         <h2 className="text-2xl font-bold mb-2 text-gray-900 dark:text-gray-100">Login required</h2>
         <p className="text-gray-500 dark:text-gray-400 mb-4">Login to view your guest information.</p>
-        
-        <a  href="/login"
+        <a
+          href="/login"
           className="px-4 py-2 text-white rounded hover:brightness-90 transition"
           style={{ backgroundColor: "var(--accent)" }}
         >
@@ -329,31 +471,51 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
   } else {
     body = (
       <>
-        {/* Controls: view toggle + page size */}
+        {/* Controls: view toggle + select + page size */}
         {guests.length > 0 && (
           <div className="bg-white dark:bg-gray-800 border border-transparent dark:border-gray-700 p-3 rounded-2xl shadow dark:shadow-black/30 flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-1">
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-900 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("grid")}
+                  aria-label="Grid view"
+                  className={`px-3 py-1.5 text-sm rounded-md transition ${
+                    viewMode === "grid"
+                      ? "bg-white dark:bg-gray-700 shadow font-medium"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+                  style={viewMode === "grid" ? { color: "var(--accent)" } : undefined}
+                >
+                  <LayoutGrid size={28} />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  aria-label="List view"
+                  className={`px-3 py-1.5 text-sm rounded-md transition ${
+                    viewMode === "list"
+                      ? "bg-white dark:bg-gray-700 shadow font-medium"
+                      : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+                  }`}
+                  style={viewMode === "list" ? { color: "var(--accent)" } : undefined}
+                >
+                  <List size={28} />
+                </button>
+              </div>
+
               <button
-                onClick={() => setViewMode("grid")}
-                className={`px-3 py-1.5 text-sm rounded-md transition ${
-                  viewMode === "grid"
-                    ? "bg-white dark:bg-gray-700 shadow font-medium"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                }`}
-                style={viewMode === "grid" ? { color: "var(--accent)" } : undefined}
+                onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition hover:brightness-95"
+                style={selectMode ? accentChip : undefined}
               >
-                <LayoutGrid size={28} />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`px-3 py-1.5 text-sm rounded-md transition ${
-                  viewMode === "list"
-                    ? "bg-white dark:bg-gray-700 shadow font-medium"
-                    : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                }`}
-                style={viewMode === "list" ? { color: "var(--accent)" } : undefined}
-              >
-                <List size={28} />
+                {selectMode ? (
+                  <>
+                    <X size={16} /> Cancel
+                  </>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-200">
+                    <CheckSquare size={16} /> Select
+                  </span>
+                )}
               </button>
             </div>
 
@@ -377,6 +539,32 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
           </div>
         )}
 
+        {/* Batch action bar */}
+        {selectMode && guests.length > 0 && (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-2xl border mb-4"
+            style={accentChip}
+          >
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+              <SelectBox
+                checked={allOnPageSelected}
+                onChange={toggleSelectPage}
+                label="Select all guests on this page"
+              />
+              Select all on this page
+              <span className="font-normal opacity-80">({selectedIds.size} selected)</span>
+            </label>
+            <button
+              onClick={handleBatchDelete}
+              disabled={selectedIds.size === 0 || deleting}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm text-white bg-amber-500 rounded-lg shadow hover:bg-amber-600 transition disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Trash2 size={16} />
+              {deleting ? "Deleting..." : `Delete selected (${selectedIds.size})`}
+            </button>
+          </div>
+        )}
+
         {/* Empty state */}
         {guests.length === 0 ? (
           <div className="text-center py-10">
@@ -392,42 +580,65 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
           </div>
         ) : viewMode === "grid" ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 auto-rows-fr">
-            {paginatedGuests.map((guest) => (
-              <div
-                key={guest.id}
-                className="bg-white dark:bg-gray-800 border border-transparent dark:border-gray-700 rounded-2xl shadow dark:shadow-black/30 p-4 flex flex-col transition transform hover:-translate-y-1 hover:shadow-lg"
-              >
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{guest.full_name}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Age: {guest.age} • {guest.gender}
-                </p>
-
-                {guest.id_document && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">ID Preview:</p>
-                    <IdDocumentPreview guest={guest} />
+            {paginatedGuests.map((guest) => {
+              const isSelected = selectedIds.has(guest.id);
+              return (
+                <div
+                  key={guest.id}
+                  onClick={selectMode ? () => toggleSelected(guest.id) : undefined}
+                  className={`bg-white dark:bg-gray-800 border rounded-2xl shadow dark:shadow-black/30 p-4 flex flex-col transition transform hover:-translate-y-1 hover:shadow-lg ${
+                    selectMode ? "cursor-pointer" : ""
+                  } ${isSelected ? "" : "border-transparent dark:border-gray-700"}`}
+                  style={isSelected ? { borderColor: "var(--accent)" } : undefined}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                        {guest.full_name}
+                      </h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Age: {guest.age} • {guest.gender}
+                      </p>
+                    </div>
+                    {selectMode && (
+                      <SelectBox
+                        checked={isSelected}
+                        onChange={() => toggleSelected(guest.id)}
+                        label={`Select ${guest.full_name}`}
+                      />
+                    )}
                   </div>
-                )}
 
-                <LocalBadge local={guest.local} />
+                  {guest.id_document && (
+                    <div className="mt-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">ID Preview:</p>
+                      <IdDocumentPreview guest={guest} />
+                    </div>
+                  )}
 
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => openEditForm(guest)}
-                    className="flex-1 px-3 py-1 text-sm text-white rounded hover:brightness-90 transition transform hover:scale-105"
-                    style={{ backgroundColor: "var(--accent)" }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(guest.id)}
-                    className="flex-1 px-3 py-1 text-sm bg-amber-400 text-white rounded hover:bg-amber-500 transition transform hover:scale-105"
-                  >
-                    Delete
-                  </button>
+                  <LocalBadge local={guest.local} />
+
+                  {!selectMode && (
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => openEditForm(guest)}
+                        className="flex-1 px-3 py-1 text-sm text-white rounded hover:brightness-90 transition transform hover:scale-105"
+                        style={{ backgroundColor: "var(--accent)" }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(guest.id)}
+                        disabled={deleting}
+                        className="flex-1 px-3 py-1 text-sm bg-amber-400 text-white rounded hover:bg-amber-500 transition transform hover:scale-105 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {Array.from({ length: emptySlots }).map((_, i) => (
               <div key={`grid-spacer-${i}`} className="invisible rounded-2xl p-4" aria-hidden="true">
@@ -437,45 +648,67 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
           </div>
         ) : (
           <div className="bg-white dark:bg-gray-800 border border-transparent dark:border-gray-700 rounded-2xl shadow dark:shadow-black/30 divide-y divide-gray-100 dark:divide-gray-700 overflow-hidden w-full">
-            {paginatedGuests.map((guest) => (
-              <div
-                key={guest.id}
-                className="flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-3 h-auto sm:h-16 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition"
-              >
-                <div className="flex-1 min-w-[140px]">
-                  <p className="font-semibold truncate text-gray-900 dark:text-gray-100">{guest.full_name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Age {guest.age} • {guest.gender}
-                  </p>
-                </div>
+            {paginatedGuests.map((guest) => {
+              const isSelected = selectedIds.has(guest.id);
+              return (
+                <div
+                  key={guest.id}
+                  onClick={selectMode ? () => toggleSelected(guest.id) : undefined}
+                  className={`flex flex-wrap sm:flex-nowrap items-center gap-3 px-4 py-3 h-auto sm:h-16 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition ${
+                    selectMode ? "cursor-pointer" : ""
+                  }`}
+                  style={
+                    isSelected
+                      ? { backgroundColor: "color-mix(in srgb, var(--accent) 8%, transparent)" }
+                      : undefined
+                  }
+                >
+                  {selectMode && (
+                    <SelectBox
+                      checked={isSelected}
+                      onChange={() => toggleSelected(guest.id)}
+                      label={`Select ${guest.full_name}`}
+                    />
+                  )}
 
-                <div className="w-40 shrink-0">
-                  <LocalBadge local={guest.local} />
-                </div>
+                  <div className="flex-1 min-w-[140px]">
+                    <p className="font-semibold truncate text-gray-900 dark:text-gray-100">{guest.full_name}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Age {guest.age} • {guest.gender}
+                    </p>
+                  </div>
 
-                <div className="flex gap-2 shrink-0">
-                  <button
-                    onClick={() => openViewModal(guest)}
-                    className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                  >
-                    View ID
-                  </button>
-                  <button
-                    onClick={() => openEditForm(guest)}
-                    className="px-3 py-1 text-sm text-white rounded hover:brightness-90 transition"
-                    style={{ backgroundColor: "var(--accent)" }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(guest.id)}
-                    className="px-3 py-1 text-sm bg-amber-400 text-white rounded hover:bg-amber-500 transition"
-                  >
-                    Delete
-                  </button>
+                  <div className="w-40 shrink-0">
+                    <LocalBadge local={guest.local} />
+                  </div>
+
+                  {!selectMode && (
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        onClick={() => openViewModal(guest)}
+                        className="px-3 py-1 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                      >
+                        View ID
+                      </button>
+                      <button
+                        onClick={() => openEditForm(guest)}
+                        className="px-3 py-1 text-sm text-white rounded hover:brightness-90 transition"
+                        style={{ backgroundColor: "var(--accent)" }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDelete(guest.id)}
+                        disabled={deleting}
+                        className="px-3 py-1 text-sm bg-amber-400 text-white rounded hover:bg-amber-500 transition disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {Array.from({ length: emptySlots }).map((_, i) => (
               <div key={`list-spacer-${i}`} className="h-16" aria-hidden="true" />
@@ -552,7 +785,9 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
         {viewingGuest && (
           <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/20 dark:bg-gray-900 backdrop-blur-sm transition">
             <div className="bg-white dark:bg-gray-900 border border-transparent dark:border-gray-700 rounded-2xl p-6 w-full max-w-md shadow-lg animate-[fadeInUp_0.3s_ease-out]">
-              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--accent)" }}>{viewingGuest.full_name}</h2>
+              <h2 className="text-xl font-bold mb-4" style={{ color: "var(--accent)" }}>
+                {viewingGuest.full_name}
+              </h2>
               <div className="space-y-2 text-sm text-gray-700 dark:text-gray-300">
                 <p>Age: {viewingGuest.age}</p>
                 <p>Gender: {viewingGuest.gender}</p>
@@ -662,8 +897,24 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
                   </div>
                 )}
 
+                {/* Data privacy notice */}
+                <div
+                  className="flex items-start gap-2 p-3 rounded-lg border text-xs leading-relaxed"
+                  style={accentChip}
+                >
+                  <ShieldCheck size={16} className="shrink-0 mt-0.5" />
+                  <p>
+                    <span className="font-semibold">Your privacy matters.</span> Your guests' personal
+                    information and ID documents are used only to verify identity and confirm discount
+                    eligibility for your bookings. They are stored securely, are not shared with third
+                    parties, and can be deleted by removing the guest from your list.
+                  </p>
+                </div>
+
                 <label className="flex flex-col text-sm text-gray-700 dark:text-gray-300">
-                  {editingGuest ? "Replace ID (optional)" : "Upload ID (optional)"}
+                  <span>
+                    {editingGuest ? "Replace ID" : "Upload ID"} <span className="text-red-500">*</span>
+                  </span>
                   <input
                     type="file"
                     name="id_document"
@@ -671,6 +922,10 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
                     onChange={handleFileChange}
                     className="mt-1 text-gray-700 dark:text-gray-300"
                   />
+                  <span className="text-xs text-gray-400 mt-1">Images or PDF, up to {MAX_ID_FILE_MB}MB.</span>
+                  {formErrors.id_document && (
+                    <p className="text-xs text-red-500 dark:text-red-400 mt-1">{formErrors.id_document}</p>
+                  )}
                 </label>
 
                 {formData.id_preview && (
@@ -688,17 +943,19 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
               <div className="flex justify-end gap-2 mt-6">
                 <button
                   type="button"
-                  onClick={() => setFormOpen(false)}
-                  className="px-4 py-2 rounded border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                  onClick={closeForm}
+                  disabled={submitting}
+                  className="px-4 py-2 rounded border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-white rounded hover:brightness-90 transition transform hover:scale-105"
+                  disabled={submitting}
+                  className="px-4 py-2 text-white rounded hover:brightness-90 transition transform hover:scale-105 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                   style={{ backgroundColor: "var(--accent)" }}
                 >
-                  Save
+                  {submitting ? "Saving..." : "Save"}
                 </button>
               </div>
             </form>

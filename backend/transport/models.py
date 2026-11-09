@@ -319,6 +319,14 @@ class TransportPassenger(BaseModel):
         default="reserved",
     )
 
+    SOURCE_CHOICES = [
+        ("reserved", "Reserved"),
+        ("walk_in", "Walk-in"),
+        ("request", "Reservation request"),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, blank=True, null=True)
+
+
     def clean(self):
         super().clean()
         if self.boarding_stop and self.boarding_stop.transportation_id != self.transportation_id:
@@ -344,6 +352,9 @@ class TransportPassenger(BaseModel):
         return new_b >= old_b and new_a <= old_a
 
     def save(self, *args, **kwargs):
+        if not self.pk and not self.source:
+            self.source = "reserved"   # anything added any other way (e.g. by admin)
+     
         self.full_clean()
         vehicle = self.transportation.vehicle
         skip_check = self._is_range_shrinking() or self.status in ("cancelled", "no_show")
@@ -457,6 +468,7 @@ class TransportReservation(BaseModel):
                     boarding_stop=reservation.boarding_stop,
                     alighting_stop=reservation.alighting_stop,
                     status="reserved",
+                    source="request",
                 )
                 passenger.save()  # capacity / validation errors roll everything back
                 travel_guest.passenger = passenger

@@ -2,14 +2,14 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested.routers import NestedDefaultRouter
 
-from .views import (
+from ..views import (
     TransportationAdminViewSet, VehicleAdminViewSet, LocationAdminViewSet, DriverAdminViewSet,
     TransportationStopAdminViewSet, TransportPassengerAdminViewSet,
     TransportationDriverViewSet,
     TransportationViewSet, VehicleViewSet, LocationViewSet,
 )
 
-from .views import (
+from ..views import (
      AcceptTripView,
     AddWalkInPassengerView,
     AlightAtStopView,
@@ -26,9 +26,11 @@ from .views import (
        AdminReservationListView,
     ApproveReservationView,
     RejectReservationView,
+    ReportCatalogView, ReportRunView,
+  
 )
 
-from .views import ReservationListCreateView, SavedGuestsView
+from ..views import ReservationListCreateView, SavedGuestsView
 
 # Client-facing — read only
 client_router = DefaultRouter()
@@ -95,6 +97,8 @@ urlpatterns = [
     path("admin-transport/reservations/", AdminReservationListView.as_view(), name="admin-reservation-list"),
     path("admin-transport/reservations/<str:pk>/approve/", ApproveReservationView.as_view(), name="admin-reservation-approve"),
     path("admin-transport/reservations/<str:pk>/reject/", RejectReservationView.as_view(), name="admin-reservation-reject"),
+        path("admin-transport/reports/", ReportCatalogView.as_view(), name="admin-report-catalog"),
+    path("admin-transport/reports/<str:key>/", ReportRunView.as_view(), name="admin-report-run"),
 ]
 
 
