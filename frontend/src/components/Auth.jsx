@@ -96,9 +96,10 @@ export default function AuthProvider({ children }) {
         updateTheme,
         onLoginSuccess,
         logout,
+        loading,
       }}
     >
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
