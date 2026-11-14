@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Facebook, Instagram, Mail, Youtube, } from 'lucide-react'; 
 import api from "../api";
 import FAQModal from "./FAQModal";
 import ScrollToTop from "./ScrollToTop";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 
 // Custom X (formerly Twitter) SVG Icon
 const XIcon = ({ size = 24, className = "" }) => (
@@ -34,17 +35,24 @@ const Footer = () => {
     const [config, setConfig] = useState(null);
     const [isFaqOpen, setIsFaqOpen] = useState(false);
 
-    useEffect(() => {
-        const fetchConfig = async () => {
-            try {
-                const res = await api.get("/api/site-info/"); 
-                setConfig(res.data);
-            } catch (err) {
-                console.error("Footer config error:", err);
-            }
-        };
-        fetchConfig();
+    const fetchConfig = useCallback(async (background = false) => {
+        try {
+            const res = await api.get(
+                "/api/site-info/",
+                background ? { suppressGlobalApiError: true } : undefined
+            );
+            setIfChanged(setConfig, res.data);
+        } catch (err) {
+            if (!background) console.error("Footer config error:", err);
+            else console.warn("Footer site-info live refresh failed:", err);
+        }
     }, []);
+
+    useEffect(() => {
+        fetchConfig();
+    }, [fetchConfig]);
+
+    useLiveRefresh(() => fetchConfig(true), { interval: 60_000 });
 
     if (!config) return <footer className="p-10 text-center bg-gray-900 text-white">Loading...</footer>;
 

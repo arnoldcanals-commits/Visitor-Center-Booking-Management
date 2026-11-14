@@ -100,7 +100,9 @@ api.interceptors.response.use(
       }
     }
 
-    queueGlobalApiError(error);
+    if (!error.config?.suppressGlobalApiError) {
+      queueGlobalApiError(error);
+    }
     return Promise.reject(error);
   }
 );

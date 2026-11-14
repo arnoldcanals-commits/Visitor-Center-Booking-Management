@@ -1,6 +1,7 @@
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 const FALLBACK = {
   title: "Your stays and guests, all in one place",
   subtitle:
@@ -57,21 +58,31 @@ function Frame({ image, index, className = "" }) {
 export default function Dashboard({ onCtaClick }) {
   const [data, setData] = useState(null);
 
+  const fetchDashboard = useCallback(async ({ background = false, signal } = {}) => {
+    try {
+      const response = await fetch("/api/dashboard/", {
+        credentials: "include",
+        signal,
+      });
+      if (!response.ok) throw new Error(`Dashboard request failed (${response.status}).`);
+      setIfChanged(setData, await response.json());
+    } catch (err) {
+      if (err?.name === "AbortError") return;
+      if (!background) setIfChanged(setData, FALLBACK);
+      else console.warn("Dashboard live refresh failed:", err);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
-
-    fetch("/api/dashboard/", {
-      credentials: "include",
-      signal: controller.signal,
-    })
-      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
-      .then(setData)
-      .catch((err) => {
-        if (err?.name !== "AbortError") setData(FALLBACK);
-      });
-
+    fetchDashboard({ signal: controller.signal });
     return () => controller.abort();
-  }, []);
+  }, [fetchDashboard]);
+
+  useLiveRefresh(
+    () => fetchDashboard({ background: true }),
+    { enabled: data !== null }
+  );
 
   const hero = data;
   const [main, topSide, bottomSide] = hero?.images ?? [];

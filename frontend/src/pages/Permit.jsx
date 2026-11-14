@@ -17,6 +17,7 @@ import {
 import api from "../api";
 import { AuthContext } from "../components/Auth";
 import TopBar from "../components/TopBar";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 const STATUS_LABELS = {
   pending_payment: "Awaiting payment",
   paid: "Paid — generating permit",
@@ -45,26 +46,49 @@ export default function PermitPage() {
   const pollRef = useRef(null);
 
   // --- Load guests + existing permits together ---
-  const loadAll = useCallback(async () => {
-    setLoading(true);
-    setLoadError(null);
+  const loadAll = useCallback(async (background = false) => {
+    if (!background) {
+      setLoading(true);
+      setLoadError(null);
+    }
     try {
       const [guestsRes, permitsRes] = await Promise.all([
-        api.get("/api/guests/"),
-        api.get("/api/permits/mine/"),
+        api.get(
+          "/api/guests/",
+          background ? { suppressGlobalApiError: true } : undefined
+        ),
+        api.get(
+          "/api/permits/mine/",
+          background ? { suppressGlobalApiError: true } : undefined
+        ),
       ]);
-      setGuests(guestsRes.data);
-      setMyPermits(permitsRes.data);
+      setIfChanged(setGuests, guestsRes.data);
+      setIfChanged(setMyPermits, permitsRes.data);
+      setLoadError(null);
     } catch (err) {
-      setLoadError("Couldn't load your data. Try refreshing.");
+      if (!background) {
+        setLoadError("Couldn't load your data. Try refreshing.");
+      } else {
+        console.warn("Permit live refresh failed:", err);
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     loadAll();
   }, [loadAll]);
+
+  useLiveRefresh(() => loadAll(true), {
+    enabled: !!user && !loading && !showCreateForm && !creating && !actionLoading,
+  });
+
+  useEffect(() => {
+    if (!permit) return;
+    const updatedPermit = myPermits.find((item) => item.id === permit.id);
+    if (updatedPermit) setIfChanged(setPermit, updatedPermit);
+  }, [myPermits, permit]);
 
   // guests currently tied up in an active permit — can't be selected again
   const busyGuestIds = new Set(

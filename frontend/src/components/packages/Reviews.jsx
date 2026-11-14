@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import api from "../../api";
+import { setIfChanged, useLiveRefresh } from "../../hooks/useLiveRefresh";
 
 import {
   Star,
@@ -17,32 +18,43 @@ export default function Reviews({ packageId }) {
 
   const serverURL = import.meta.env.VITE_API_URL;
 
-  useEffect(() => {
+  const fetchReviews = useCallback(async (background = false) => {
     if (!packageId) return;
-
-    fetchReviews();
-  }, [packageId]);
-
-  async function fetchReviews() {
     try {
-      setLoading(true);
+      if (!background) setLoading(true);
 
       // fetch ALL reviews
-      const res = await api.get("api/reviews/");
+      const res = await api.get(
+        "api/reviews/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
 
       // filter reviews belonging to this package
       const filtered = res.data.filter(
         (r) => r.package?.id === packageId
       );
 
-      setReviews(filtered);
+      setIfChanged(setReviews, filtered);
+      setError(null);
     } catch (err) {
-      console.error(err);
-      setError("Failed to load reviews.");
+      if (!background) {
+        console.error(err);
+        setError("Failed to load reviews.");
+      } else {
+        console.warn("Review live refresh failed:", err);
+      }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
-  }
+  }, [packageId]);
+
+  useEffect(() => {
+    fetchReviews();
+  }, [fetchReviews]);
+
+  useLiveRefresh(() => fetchReviews(true), {
+    enabled: !!packageId && !loading,
+  });
 
   function getImageURL(path) {
     if (!path) return null;

@@ -5,6 +5,7 @@ import BookingCard from "../../components/booking/BookingCard";
 import TopBar from "../../components/TopBar";
 import LoadingIndicator from "../../components/LoadingIndicator";
 import { CheckCircle2, Calendar, Clock, Palmtree } from "lucide-react";
+import { setIfChanged, useLiveRefresh } from "../../hooks/useLiveRefresh";
 
 const isLoggedIn = () => {
   const token = localStorage.getItem(ACCESS_TOKEN);
@@ -40,46 +41,60 @@ export default function BookingView() {
   // for the bookings fetch to resolve.
   const [authed, setAuthed] = useState(isLoggedIn());
 
-  const fetchBookings = useCallback(async () => {
+  const fetchBookings = useCallback(async (background = false) => {
     if (!isLoggedIn()) {
       setAuthed(false);
       setBookings([]);
-      setLoading(false);
+      if (!background) setLoading(false);
       return;
     }
     setAuthed(true);
-    setLoading(true);
-    setError(null);
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
     try {
-      const res = await api.get("api/booking/my/");
+      const res = await api.get(
+        "api/booking/my/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
       const list = normalizeBookings(res?.data);
 
       if (!list) {
         console.error("Unexpected bookings response:", res?.data);
-        setBookings([]);
-        setError("Failed to load bookings. Please try again.");
+        if (!background) {
+          setBookings([]);
+          setError("Failed to load bookings. Please try again.");
+        }
         return;
       }
 
-      setBookings(list);
+      setIfChanged(setBookings, list);
+      setError(null);
     } catch (err) {
-      console.error("Failed to fetch bookings:", err);
-      setBookings([]);
       // A 401 here means the interceptor's refresh also failed;
       // it will redirect on its own, but guard just in case.
       if (err?.response?.status === 401) {
         setAuthed(false);
-      } else {
+      } else if (!background) {
+        console.error("Failed to fetch bookings:", err);
+        setBookings([]);
         setError("Failed to load bookings. Please try again.");
+      } else {
+        console.warn("Booking live refresh failed:", err);
       }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchBookings();
   }, [fetchBookings]);
+
+  useLiveRefresh(() => fetchBookings(true), {
+    enabled: authed && !loading,
+  });
 
   // BookingCard performs the actual cancellation-request PATCH itself
   // (setting requested_cancellation on the booking); this just refreshes

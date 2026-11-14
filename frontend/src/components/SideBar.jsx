@@ -1,7 +1,8 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useState, useCallback } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { AuthContext } from "./Auth";
 import api from "../api";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 import {
   LayoutDashboard,
   Package,
@@ -28,17 +29,24 @@ export default function Sidebar({ collapsed }) {
   const accent = theme?.themeColor || "#3b82f6";
   const [config, setConfig] = useState(null);
 
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const res = await api.get("/api/site-info/");
-        setConfig(res.data);
-      } catch (err) {
-        console.error("Info config error:", err);
-      }
-    };
-    fetchConfig();
+  const fetchConfig = useCallback(async (background = false) => {
+    try {
+      const res = await api.get(
+        "/api/site-info/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      setIfChanged(setConfig, res.data);
+    } catch (err) {
+      if (!background) console.error("Info config error:", err);
+      else console.warn("Sidebar site-info live refresh failed:", err);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  useLiveRefresh(() => fetchConfig(true), { interval: 60_000 });
 
   const visibleNavItems = NAV_ITEMS.filter(
     (item) => !item.authRequired || isAuthenticated

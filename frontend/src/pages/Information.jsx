@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import TopBar from "../components/TopBar";
 import LoadingIndicator from "../components/LoadingIndicator";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 // Deterministic accent so each category keeps the same color across renders
 const ACCENTS = [
   "from-teal-500 to-cyan-500",
@@ -164,21 +165,40 @@ export default function InformationView() {
   const [viewMode, setViewMode] = useState("grid"); // "grid" | "list"
 
 
-  const fetchInformation = useCallback(async () => {
+  const fetchInformation = useCallback(async (background = false) => {
     try {
-      const minDelay = new Promise((resolve) => setTimeout(resolve, 1000)); 
-      const [res] = await Promise.all([api.get("api/information/", minDelay)]);
-      setInformation(res.data);
+      if (!background) setLoading(true);
+      const request = api.get(
+        "api/information/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      if (!background) {
+        const minDelay = new Promise((resolve) => setTimeout(resolve, 1000));
+        const [res] = await Promise.all([request, minDelay]);
+        setIfChanged(setInformation, res.data);
+      } else {
+        const res = await request;
+        setIfChanged(setInformation, res.data);
+      }
     } catch (err) {
-      console.error(err);
+      if (!background) console.error(err);
+      else console.warn("Information live refresh failed:", err);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchInformation();
   }, [fetchInformation]);
+
+  useLiveRefresh(() => fetchInformation(true), { enabled: !loading });
+
+  useEffect(() => {
+    if (!selectedItem) return;
+    const updatedItem = information.find((item) => item.id === selectedItem.id);
+    if (updatedItem) setIfChanged(setSelectedItem, updatedItem);
+  }, [information, selectedItem]);
 
   const groupedByCategory = useMemo(
     () =>

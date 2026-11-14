@@ -1,9 +1,10 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import TopBar from "../components/TopBar";
 import FiltersSidebar from "../components/FiltersSidebar";
 import PackageList from "../components/PackageList";
 import api from "../api";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 
 export default function SearchPage() {
   const location = useLocation();
@@ -22,29 +23,37 @@ export default function SearchPage() {
     endDate: null,
   });
 
-  // Fetch all packages (same as Home)
-  useEffect(() => {
-    const fetchPackages = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get("/api/home/");
-        const pkgArray =
-          Array.isArray(res.data)
-            ? res.data
-            : Array.isArray(res.data.packages)
-            ? res.data.packages
-            : [];
-        setPackages(pkgArray);
-      } catch (err) {
+  const fetchPackages = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
+    try {
+      const res = await api.get(
+        "/api/home/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      const pkgArray =
+        Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data.packages)
+          ? res.data.packages
+          : [];
+      setIfChanged(setPackages, pkgArray);
+    } catch (err) {
+      if (!background) {
         console.error("Package fetch error:", err);
         setPackages([]);
-      } finally {
-        setLoading(false);
+      } else {
+        console.warn("Package live refresh failed:", err);
       }
-    };
-
-    fetchPackages();
+    } finally {
+      if (!background) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
+
+  useLiveRefresh(() => fetchPackages(true), { enabled: !loading });
 
   // Update URL on search submit
   const handleSearchSubmit = (e) => {

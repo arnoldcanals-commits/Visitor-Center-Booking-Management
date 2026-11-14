@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import TopBar from "../../components/TopBar";
 import AuthPanel from "../../components/AuthPanel";
@@ -6,6 +6,7 @@ import PackageDetailContent from "../../components/packages/PackageDetailContent
 
 import PackageCarousel from "../../components/packages/PackageCarouel";
 import api from "../../api";
+import { setIfChanged, useLiveRefresh } from "../../hooks/useLiveRefresh";
 
 export default function PackageDetail() {
   const { id: selectedPackageId } = useParams();
@@ -28,50 +29,68 @@ export default function PackageDetail() {
     setAuthPanelOpen(false);
   };
 
-  useEffect(() => {
+  const fetchPackageDetail = useCallback(async (background = false) => {
     if (!selectedPackageId) return;
-
-    const fetchPackageDetail = async () => {
-      setLoadingDetail(true);
-      try {
-        const res = await api.get(`/api/packages/${selectedPackageId}/`);
-        setPackageDetail(res.data);
-      } catch (err) {
+    if (!background) setLoadingDetail(true);
+    try {
+      const res = await api.get(
+        `/api/packages/${selectedPackageId}/`,
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      setIfChanged(setPackageDetail, res.data);
+    } catch (err) {
+      if (!background) {
         console.error("Failed to fetch package detail:", err);
         setPackageDetail(null);
-      } finally {
-        setLoadingDetail(false);
+      } else {
+        console.warn("Package detail live refresh failed:", err);
       }
-    };
-
-    fetchPackageDetail();
+    } finally {
+      if (!background) setLoadingDetail(false);
+    }
   }, [selectedPackageId]);
 
   useEffect(() => {
-    const fetchPackages = async () => {
-      setLoadingPackages(true);
-      try {
-        const res = await api.get("/api/packages/");
-        const data = Array.isArray(res.data)
-          ? res.data
-          : res.data.packages || [];
+    fetchPackageDetail();
+  }, [fetchPackageDetail]);
 
-        const sanitized = data.map((pkg) => ({
-          ...pkg,
-          images: Array.isArray(pkg.images) ? pkg.images : [],
-        }));
+  useLiveRefresh(() => fetchPackageDetail(true), {
+    enabled: !!selectedPackageId && !loadingDetail,
+  });
 
-        setPackages(sanitized);
-      } catch (err) {
+  const fetchPackages = useCallback(async (background = false) => {
+    if (!background) setLoadingPackages(true);
+    try {
+      const res = await api.get(
+        "/api/packages/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data.packages || [];
+      const sanitized = data.map((pkg) => ({
+        ...pkg,
+        images: Array.isArray(pkg.images) ? pkg.images : [],
+      }));
+
+      setIfChanged(setPackages, sanitized);
+    } catch (err) {
+      if (!background) {
         console.error("Failed to fetch packages:", err);
         setPackages([]);
-      } finally {
-        setLoadingPackages(false);
+      } else {
+        console.warn("Package list live refresh failed:", err);
       }
-    };
-
-    fetchPackages();
+    } finally {
+      if (!background) setLoadingPackages(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
+
+  useLiveRefresh(() => fetchPackages(true), { enabled: !loadingPackages });
 
   const selectedIdNum = Number(selectedPackageId);
   const otherPackages = packages.filter((pkg) => Number(pkg.id) !== selectedIdNum);

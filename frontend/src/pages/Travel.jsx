@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef, useContext } from "react";
+import React, { useMemo, useState, useEffect, useRef, useContext, useCallback } from "react";
 import api from "../api";
 import { AuthContext } from "../components/Auth";
 import TopBar from "../components/TopBar";
@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import LoadingIndicator from "../components/LoadingIndicator";
 import ReservationRequestModal from "../components/Travel/ReservationRequestModal";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 const STATUS_CHOICES = ["Scheduled", "Departed", "Delayed", "Cancelled", "Completed"];
 
 const STATUS_COLORS = {
@@ -347,24 +348,32 @@ export default function Travel() {
   const [reserveItem, setReserveItem] = useState(null);
   const [reservations, setReservations] = useState([]);
 
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async (background = false) => {
     if (!isAuthenticated) {
       setReservations([]);
       return;
     }
     try {
-      const res = await api.get("/api/transport-reservations/");
-      setReservations(res.data || []);
-    } catch {
-      setReservations([]);
+      const res = await api.get(
+        "/api/transport-reservations/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      setIfChanged(setReservations, res.data || []);
+    } catch (err) {
+      if (!background) {
+        setReservations([]);
+      } else {
+        console.warn("Reservation live refresh failed:", err);
+      }
     }
-  };
+  }, [isAuthenticated]);
 
   useEffect(() => {
     loadReservations();
     if (!isAuthenticated) setReserveItem(null); // logged out: close any open request form
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loadReservations]);
+
+  useLiveRefresh(() => loadReservations(true), { enabled: isAuthenticated });
 
   // Latest relevant state per trip: "pending" wins over "approved"; rejected is ignored
   const reservationStatusByTrip = useMemo(() => {
@@ -406,38 +415,49 @@ export default function Travel() {
   // server-side, but exact-match only). Everything else — including the new
   // origin/destination stop search — is matched client-side below, since it
   // needs partial/substring matching that the current filterset doesn't do.
-   
- const isFirstLoad = useRef(true);
-
-useEffect(() => {
-  const fetchTransportation = async () => {
-    setLoading(true);
+  const isFirstLoad = useRef(true);
+  const fetchTransportation = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     try {
       const params = {};
       if (primaryFilters.status) params.status = primaryFilters.status;
 
-      const delayMs = isFirstLoad.current ? 1500 : 0;
+      const delayMs = !background && isFirstLoad.current ? 1500 : 0;
       const minDelay = new Promise((resolve) => setTimeout(resolve, delayMs));
 
       const [res] = await Promise.all([
-        api.get("/api/transportation/", { params }),
+        api.get("/api/transportation/", {
+          params,
+          ...(background ? { suppressGlobalApiError: true } : {}),
+        }),
         minDelay,
       ]);
 
-      setTransportation(res.data);
+      setIfChanged(setTransportation, res.data);
       setError(null);
     } catch (err) {
-      console.error("Transportation fetch error:", err);
-      setError("Failed to load transportation data.");
+      if (!background) {
+        console.error("Transportation fetch error:", err);
+        setError("Failed to load transportation data.");
+      } else {
+        console.warn("Transportation live refresh failed:", err);
+      }
     } finally {
-      setLoading(false);
-      isFirstLoad.current = false;
+      if (!background) {
+        setLoading(false);
+        isFirstLoad.current = false;
+      }
     }
-  };
+  }, [primaryFilters.status]);
 
-  const debounce = setTimeout(fetchTransportation, 300);
-  return () => clearTimeout(debounce);
-}, [primaryFilters.status]);
+  useEffect(() => {
+    const debounce = setTimeout(() => fetchTransportation(), 300);
+    return () => clearTimeout(debounce);
+  }, [fetchTransportation]);
+
+  useLiveRefresh(() => fetchTransportation(true), {
+    enabled: !loading && !reserveItem,
+  });
 
   // Client-side filtering for everything that needs substring matching
   const filteredTransportation = useMemo(() => {

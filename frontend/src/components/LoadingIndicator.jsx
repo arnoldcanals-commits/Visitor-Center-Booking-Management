@@ -32,7 +32,9 @@ export function LoadingIndicator({ size = 140 }) {
           src={dolphinAnimation}
           autoplay
           loop={false}
-          onComplete={() => setPlayLongAnimation(false)}
+          subscriptions={{
+            complete: () => setPlayLongAnimation(false),
+          }}
           style={{ width: size, height: size }}
         />
       ) : (

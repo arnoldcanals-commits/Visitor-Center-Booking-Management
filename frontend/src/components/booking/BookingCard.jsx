@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -19,6 +19,7 @@ import ReviewForm from "./ReviewForm";
 import ConfirmModal from "../ConfirmModal";
 import api from "../../api";
 import { AuthContext } from "../Auth";
+import { setIfChanged, useLiveRefresh } from "../../hooks/useLiveRefresh";
 const STATUS_STYLES = {
   pending:
     "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-400",
@@ -59,18 +60,31 @@ export default function BookingCard({ booking, onCancel }) {
         })
       : "—";
 
-  useEffect(() => {
+  const fetchBill = useCallback(async (background = false) => {
     if (!isAuthenticated || !booking.id) return;
-    async function fetchBill() {
-      try {
-        const res = await api.get(`/api/user/bills/${booking.id}/`);
-        setBill(res.data);
-      } catch (err) {
-        console.error("Failed to fetch bill", err);
-      }
+    try {
+      const res = await api.get(
+        `/api/user/bills/${booking.id}/`,
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      setIfChanged(setBill, res.data);
+    } catch (err) {
+      if (!background) console.error("Failed to fetch bill", err);
+      else console.warn("Bill live refresh failed:", err);
     }
-    fetchBill();
   }, [booking.id, isAuthenticated]);
+
+  useEffect(() => {
+    fetchBill();
+  }, [fetchBill]);
+
+  useEffect(() => {
+    if (showBill) fetchBill(true);
+  }, [fetchBill, showBill]);
+
+  useLiveRefresh(() => fetchBill(true), {
+    enabled: showBill && isAuthenticated,
+  });
 
   const handleSubmitProof = async (e) => {
     e.preventDefault();

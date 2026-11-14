@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import api from "../api";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 import { ACCESS_TOKEN } from "../constants";
 import {
   LayoutGrid,
@@ -146,21 +147,30 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
   // =========================
   // Fetch guests
   // =========================
-  const fetchGuests = useCallback(async () => {
+  const fetchGuests = useCallback(async (background = false) => {
     if (!isLoggedIn()) {
       setAuthed(false);
-      setLoading(false);
+      if (!background) setLoading(false);
       return;
     }
     setAuthed(true);
-    setLoading(true);
-    setError(null);
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
 
-    const minDelay = new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second minimum
+    const minDelay = background
+      ? Promise.resolve()
+      : new Promise((resolve) => setTimeout(resolve, 1000));
 
     try {
-      const [res] = await Promise.all([api.get("api/guests/"), minDelay]);
-      setGuests(res.data);
+      const request = api.get(
+        "api/guests/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      const [res] = await Promise.all([request, minDelay]);
+      setIfChanged(setGuests, res.data);
+      setError(null);
       // drop any selected ids that no longer exist
       setSelectedIds((prev) => {
         const valid = new Set(res.data.map((g) => g.id));
@@ -168,20 +178,32 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
         return next.size === prev.size ? prev : next;
       });
     } catch (err) {
-      console.error("Failed to fetch guests:", err);
       if (err.response?.status === 401) {
         setAuthed(false);
-      } else {
+      } else if (!background) {
+        console.error("Failed to fetch guests:", err);
         setError("Failed to load guests. Please try again.");
+      } else {
+        console.warn("Guest live refresh failed:", err);
       }
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchGuests();
   }, [fetchGuests]);
+
+  useLiveRefresh(() => fetchGuests(true), {
+    enabled: authed && !loading && !formOpen && !submitting && !deleting,
+  });
+
+  useEffect(() => {
+    if (!viewingGuest) return;
+    const updatedGuest = guests.find((guest) => guest.id === viewingGuest.id);
+    if (updatedGuest) setIfChanged(setViewingGuest, updatedGuest);
+  }, [guests, viewingGuest]);
 
   // Keep current page in range if guest count / page size changes
   const totalPages = Math.max(1, Math.ceil(guests.length / pageSize));

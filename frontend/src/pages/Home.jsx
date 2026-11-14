@@ -1,9 +1,10 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "react-router-dom";
 import TopBar from "../components/TopBar";
 import "../styles/Home.css"
 import PackageList from "../components/PackageList";
 import api from "../api";
+import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
 
 
 export default function Home() {
@@ -24,27 +25,37 @@ export default function Home() {
   // Mobile filter toggle
   const [showMobileFilters, setShowMobileFilters] = useState(false);
 
-  useEffect(() => {
-    const fetchPackages = async () => {
-      try {
-        setLoading(true);
-        const res = await api.get("/api/home/");
-        const pkgArray =
-          Array.isArray(res.data)
-            ? res.data
-            : Array.isArray(res.data.packages)
-            ? res.data.packages
-            : [];
-        setPackages(pkgArray);
-      } catch (err) {
+  const fetchPackages = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
+    try {
+      const res = await api.get(
+        "/api/home/",
+        background ? { suppressGlobalApiError: true } : undefined
+      );
+      const pkgArray =
+        Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data.packages)
+          ? res.data.packages
+          : [];
+      setIfChanged(setPackages, pkgArray);
+    } catch (err) {
+      if (!background) {
         console.error(err);
         setPackages([]);
-      } finally {
-        setLoading(false);
+      } else {
+        console.warn("Package live refresh failed:", err);
       }
-    };
-    fetchPackages();
+    } finally {
+      if (!background) setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchPackages();
+  }, [fetchPackages]);
+
+  useLiveRefresh(() => fetchPackages(true), { enabled: !loading });
 
   const filteredPackages = useMemo(() => {
     return packages.filter((pkg) => {
