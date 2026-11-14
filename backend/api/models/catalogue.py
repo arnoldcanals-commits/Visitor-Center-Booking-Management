@@ -1,17 +1,4 @@
-from django.db import models
-from django.conf import settings
-from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
-from django.db.models import Avg
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.utils import timezone
-from django.core.exceptions import ValidationError
-from django.apps import apps
-from django.db.models.signals import post_save
-from django.dispatch import receiver
-import uuid
-import os
+from django.db import models, transaction
 from .core import BaseModel, random_filename
 
 class TourPackage(BaseModel):
@@ -68,14 +55,21 @@ class TourPackageImage(BaseModel):
         ]
 
     def save(self, *args, **kwargs):
-        super().save(*args, **kwargs)
-
-        # If this is set as main, unset others
         if self.is_main:
-            TourPackageImage.objects.filter(
-                package=self.package,
-                is_main=True
-            ).exclude(pk=self.pk).update(is_main=False)
+            with transaction.atomic():
+                previous_main_images = list(
+                    TourPackageImage.objects.filter(
+                        package=self.package,
+                        is_main=True,
+                    ).exclude(pk=self.pk)
+                )
+                for image in previous_main_images:
+                    image.is_main = False
+                    image.save(update_fields=["is_main"])
+                super().save(*args, **kwargs)
+            return
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"Image for {self.package.name}"

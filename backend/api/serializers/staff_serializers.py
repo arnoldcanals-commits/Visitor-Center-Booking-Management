@@ -349,7 +349,7 @@ class StaffNotificationSerializer(serializers.ModelSerializer):
 
 
 class StaffAuditLogSerializer(serializers.ModelSerializer):
-    user_name = serializers.CharField(source="user.username", read_only=True)
+    user_name = serializers.CharField(source="user.username", read_only=True, default="System")
     content_type_name = serializers.CharField(source="content_type.model", read_only=True)
 
     class Meta:
@@ -362,7 +362,7 @@ class StaffAuditLogSerializer(serializers.ModelSerializer):
             "content_type_name",
             "object_id",
             "action",
-            "message",
+            "changes",
             "created_at",
         ]
 

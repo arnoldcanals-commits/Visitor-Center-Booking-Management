@@ -2,7 +2,7 @@ import React from "react";
 import { AuthContext } from "./Auth";
 export default function SearchBar({ search = "", setSearch = () => {}, onSearchSubmit, showButton = false }) {
   return (
-    <div className="w-full px-4 sm:px-6 md:px-8 lg:px-40 max-w-full mx-auto">
+    <div className="w-full px-4 sm:px-6 md:px-8 max-w-full mx-auto">
       <form onSubmit={onSearchSubmit} style={{ all: 'unset', display: 'block', width: '100%' }}>
         <div className="relative transition-all duration-300 rounded-xl focus-within:shadow-lg focus-within:bg-white focus-within:scale-[1.03]">
           <input

@@ -11,9 +11,10 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from ..serializers import LoginSerializer, UserSerializer
 from rest_framework.exceptions import ValidationError
 
+from ..audit import AuditActorMixin
 
 # ✅ API Signup View
-class RegisterView(generics.CreateAPIView):
+class RegisterView(AuditActorMixin, generics.CreateAPIView):
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
 

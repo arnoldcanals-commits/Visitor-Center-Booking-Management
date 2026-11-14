@@ -93,12 +93,7 @@ class AdminTourPackageImageViewSet(mixins.DestroyModelMixin, viewsets.GenericVie
     @action(detail=True, methods=["post"], url_path="set-main")
     def set_main(self, request, pk=None):
         image = self.get_object()
-        # The partial unique constraint means the old main must be cleared *before*
-        # the new one is saved, otherwise save() raises IntegrityError.
         with transaction.atomic():
-            TourPackageImage.objects.filter(
-                package=image.package, is_main=True
-            ).exclude(pk=image.pk).update(is_main=False)
             if not image.is_main:
                 image.is_main = True
                 image.save(update_fields=["is_main"])

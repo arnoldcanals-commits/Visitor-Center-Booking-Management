@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { FaCheckCircle } from "react-icons/fa";
+import { showGlobalMessage } from "../../utils/globalMessages";
 
 export default function GuestList({ guestList, setGuestList, showGuests, setShowGuests }) {
   const [openIndex, setOpenIndex] = useState(-1); // collapsed by default
@@ -61,7 +62,7 @@ export default function GuestList({ guestList, setGuestList, showGuests, setShow
 
     const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
     if (!allowedTypes.includes(file.type)) {
-      alert("Invalid file type. Only images or PDFs are allowed.");
+      showGlobalMessage("Invalid file type. Only images or PDFs are allowed.", "error");
       return;
     }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import AuthPanel from "./AuthPanel";
 import SearchBar from "./SearchBar";
 import api from "../api";
@@ -9,6 +9,7 @@ import NotificationBell from "./Notifications";
 import UserMenu from "./usermenu";
 import ProfileModal from "./UserInfo";
 import { AuthContext } from "./Auth";
+import { SidebarContext } from "./SidebarContext";
 
 export default function TopBar({ search: propSearch, setSearch: propSetSearch }) {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
 
   // --- Auth + theme come from context ---
   const { user, isAuthenticated, theme, updateTheme, logout, onLoginSuccess } = useContext(AuthContext);
+  const { sidebarCollapsed, setSidebarCollapsed } = useContext(SidebarContext);
 
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
@@ -68,7 +70,11 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-md min-h-[64px] border-b border-[var(--accent)] pb-2 pt-2">
+    <header
+      data-html2canvas-ignore="true"
+      data-screenshot-exclude="true"
+      className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-md min-h-[64px] border-b border-[var(--accent)] pb-2 pt-2"
+    >
       {authPanelOpen && (
         <AuthPanel
           defaultMode={authMode}
@@ -84,7 +90,19 @@ export default function TopBar({ search: propSearch, setSearch: propSetSearch })
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ">
         <div className="flex justify-between items-center h-16">
-          
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((current) => !current)}
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="mr-3 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen size={19} />
+            ) : (
+              <PanelLeftClose size={19} />
+            )}
+          </button>
 
           {/* Desktop Search */}
           <div className="hidden md:flex justify-center items-center w-full mr-1">

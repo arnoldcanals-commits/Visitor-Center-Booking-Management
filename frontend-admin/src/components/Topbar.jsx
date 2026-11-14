@@ -1,6 +1,17 @@
 import { useLocation } from "react-router-dom";
 import { useEffect, useState, useRef, useContext, useMemo } from "react";
-import { Bell, Calendar as CalendarIcon, LogOut, ChevronDown, User, Sun, Moon } from "lucide-react";
+import {
+  Bell,
+  Calendar as CalendarIcon,
+  ChevronDown,
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  Moon,
+  User,
+} from "lucide-react";
 import { AdminDataContext } from "../contexts/AdminDataContext";
 import { AuthContext } from "../contexts/AuthContext"; // Import AuthContext
 import { Link } from "react-router-dom";
@@ -52,7 +63,11 @@ function DarkModeSwitch() {
 }
 
 
-export default function TopBar() {
+export default function TopBar({
+  sidebarExpanded,
+  onToggleSidebar,
+  onToggleMobileSidebar,
+}) {
   const location = useLocation();
   const { adminData, updateItem } = useContext(AdminDataContext);
   const { user, authTokens } = useContext(AuthContext); // user = decoded JWT (minimal), fullProfile = fetched from backend
@@ -137,8 +152,31 @@ export default function TopBar() {
     `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=0d9488&color=fff`;
 
   return (
-    <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-[var(--accent)] px-4 sm:px-6 py-3 flex items-center justify-between shadow-md">
-      <div className="text-lg font-semibold text-[var(--accent)] tracking-wide">{pageTitle}</div>
+    <div
+      data-html2canvas-ignore="true"
+      data-screenshot-exclude="true"
+      className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-[var(--accent)] px-4 sm:px-6 py-3 flex items-center justify-between shadow-md"
+    >
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          aria-label={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          title={sidebarExpanded ? "Collapse sidebar" : "Expand sidebar"}
+          className="hidden md:inline-flex rounded-lg p-2 text-[var(--accent)] hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
+          {sidebarExpanded ? <PanelLeftClose size={20} /> : <PanelLeftOpen size={20} />}
+        </button>
+        <button
+          type="button"
+          onClick={onToggleMobileSidebar}
+          aria-label="Toggle sidebar"
+          className="inline-flex md:hidden rounded-lg p-2 text-[var(--accent)] hover:bg-gray-100 dark:hover:bg-gray-800"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="text-lg font-semibold text-[var(--accent)] tracking-wide">{pageTitle}</div>
+      </div>
 
       <div className="flex items-center space-x-3 sm:space-x-4 relative">
         {/* Calendar */}

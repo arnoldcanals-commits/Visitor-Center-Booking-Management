@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from api.models import Guest
+from api.audit import record_audit
 from .models import Permit, PermitTemplate
 from .serializers import PermitSerializer, CreatePermitSerializer
 from .tasks import generate_permit_pdf_task
@@ -165,7 +166,17 @@ class ActivatePermitTemplateView(APIView):
         if not template:
             return Response({"error": "not found"}, status=404)
 
+        active_templates = list(
+            PermitTemplate.objects.filter(is_active=True).exclude(pk=pk)
+        )
         PermitTemplate.objects.exclude(pk=pk).update(is_active=False)
+        for active_template in active_templates:
+            record_audit(
+                active_template,
+                "updated",
+                {"is_active": {"from": True, "to": False}},
+                actor=request.user,
+            )
         template.is_active = True
         template.save()
 

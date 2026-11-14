@@ -6,7 +6,7 @@ from billing.models import (
     Bill,
     BillItem,
 )
-from api.models import Booking, Guest
+from api.models import BookingGuest
 
 
 # =====================================================
@@ -43,8 +43,21 @@ class AdminFeeTypeSerializer(serializers.ModelSerializer):
 # BILL ITEM
 # =====================================================
 class AdminBillItemSerializer(serializers.ModelSerializer):
-    guest_name = serializers.CharField(source="guest.full_name", read_only=True)
-    fee_type_name = serializers.CharField(source="fee_type.name", read_only=True)
+    guest_name = serializers.CharField(
+        source="booking_guest.guest.full_name",
+        read_only=True,
+        allow_null=True,
+    )
+    booking_guest = serializers.PrimaryKeyRelatedField(
+        queryset=BookingGuest.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    fee_type_name = serializers.CharField(
+        source="fee_type.name",
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = BillItem
@@ -53,6 +66,7 @@ class AdminBillItemSerializer(serializers.ModelSerializer):
             "bill",
             "item_type",
           
+            "booking_guest",
             "guest_name",
             "fee_type",
             "fee_type_name",
@@ -63,7 +77,6 @@ class AdminBillItemSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["final_amount", "created_at"]
-
 
 # =====================================================
 # BILL
@@ -77,8 +90,21 @@ from billing.models import Bill, BillItem, BillTemplate, FeeType
 # BILL ITEM
 # =====================================================
 class AdminBillItemSerializer(serializers.ModelSerializer):
-    guest_name = serializers.CharField(source="guest.full_name", read_only=True)
-    fee_type_name = serializers.CharField(source="fee_type.name", read_only=True)
+    guest_name = serializers.CharField(
+        source="booking_guest.guest.full_name",
+        read_only=True,
+        allow_null=True,
+    )
+    booking_guest = serializers.PrimaryKeyRelatedField(
+        queryset=BookingGuest.objects.all(),
+        required=False,
+        allow_null=True,
+    )
+    fee_type_name = serializers.CharField(
+        source="fee_type.name",
+        read_only=True,
+        allow_null=True,
+    )
 
     class Meta:
         model = BillItem
@@ -87,6 +113,7 @@ class AdminBillItemSerializer(serializers.ModelSerializer):
             "bill",
             "item_type",
             
+            "booking_guest",
             "guest_name",
             "fee_type",
             "fee_type_name",
@@ -98,12 +125,24 @@ class AdminBillItemSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["final_amount", "created_at"]
 
+    def validate(self, attrs):
+        bill = attrs.get("bill", getattr(self.instance, "bill", None))
+        booking_guest = attrs.get(
+            "booking_guest", getattr(self.instance, "booking_guest", None)
+        )
+        if bill and booking_guest and booking_guest.booking_id != bill.booking_id:
+            raise serializers.ValidationError(
+                {"booking_guest": "Guest must belong to this bill's booking."}
+            )
+        return attrs
+
 
 # =====================================================
 # BILL
 # =====================================================
 class AdminBillSerializer(serializers.ModelSerializer):
     booking_id = serializers.IntegerField(source="booking.id", read_only=True)
+    booking_guests = serializers.SerializerMethodField()
     tourist_name = serializers.CharField(
         source="booking.tourist.username",
         read_only=True
@@ -116,12 +155,19 @@ class AdminBillSerializer(serializers.ModelSerializer):
     transaction_image = serializers.ImageField(use_url=True)
     qr_code = serializers.ImageField(use_url=True)
 
+    def get_booking_guests(self, obj):
+        return [
+            {"id": booking_guest.id, "full_name": booking_guest.guest.full_name}
+            for booking_guest in obj.booking.booking_guests.all()
+        ]
+
     class Meta:
         model = Bill
         fields = [
             "id",
             "booking",
             "booking_id",
+            "booking_guests",
             "tourist_name",
             "reference_no",
 

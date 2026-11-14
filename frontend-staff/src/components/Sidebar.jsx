@@ -1,7 +1,6 @@
 import { useState, useContext } from "react";
 import { NavLink } from "react-router-dom";
 import {
-  Menu,
   Home,
   Users,
   ClipboardList,
@@ -88,9 +87,7 @@ const DRIVER_CATEGORIES = [
 // ===================================================
 // SIDEBAR
 // ===================================================
-export default function Sidebar({ children }) {
-  const [open, setOpen] = useState(true);
-
+export default function Sidebar({ children, sidebarExpanded }) {
   // Contexts
   const staffCtx = useContext(StaffDataContext);
   const guideCtx = useContext(TourGuideDataContext);
@@ -129,7 +126,7 @@ export default function Sidebar({ children }) {
       {/* ================= SIDEBAR ================= */}
       <aside
         className={`fixed z-40 h-full bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 transition-all duration-300 ease-in-out ${
-          open ? "w-64" : "w-20"
+          sidebarExpanded ? "w-64" : "w-20"
         }`}
       >
         {/* Header */}
@@ -137,19 +134,10 @@ export default function Sidebar({ children }) {
           {/* Invisible placeholder for centering */}
           <span className="opacity-0 font-bold text-lg">Hello {userName}</span>
 
-          {/* Toggle */}
-          <button
-            onClick={() => setOpen(!open)}
-            aria-label="Toggle sidebar"
-            className="absolute right-4 p-2 bg-[var(--accent)] text-white rounded-full shadow transition-transform duration-300 hover:scale-110 active:scale-95"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-
           {/* Visible name */}
           <span
             className={`text-[var(--accent)] font-bold text-lg absolute left-4 transition-opacity duration-200 whitespace-nowrap overflow-hidden ${
-              open ? "opacity-100" : "opacity-0 pointer-events-none"
+              sidebarExpanded ? "opacity-100" : "opacity-0 pointer-events-none"
             }`}
           >
             Hello {userName}
@@ -166,11 +154,11 @@ export default function Sidebar({ children }) {
                 <button
                   onClick={() => toggleCategory(category.name)}
                   className={`w-full flex items-center justify-between px-2 py-2 rounded text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500 hover:text-[var(--accent)] transition-colors duration-200 ${
-                    !open && "justify-center"
+                    !sidebarExpanded && "justify-center"
                   }`}
                 >
-                  {open && <span>{category.name}</span>}
-                  {open && (
+                  {sidebarExpanded && <span>{category.name}</span>}
+                  {sidebarExpanded && (
                     <ChevronDown
                       className={`w-4 h-4 transition-transform duration-300 ${
                         isOpen ? "rotate-180" : "rotate-0"
@@ -182,7 +170,7 @@ export default function Sidebar({ children }) {
                 {/* Category links */}
                 <div
                   className={`grid transition-all duration-300 ease-in-out ${
-                    isOpen || !open
+                    isOpen || !sidebarExpanded
                       ? "grid-rows-[1fr] opacity-100"
                       : "grid-rows-[0fr] opacity-0"
                   }`}
@@ -200,11 +188,11 @@ export default function Sidebar({ children }) {
                                 isActive
                                   ? "bg-[var(--accent)] text-white font-semibold shadow-sm"
                                   : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:translate-x-0.5"
-                              } ${!open && "justify-center"}`
+                              } ${!sidebarExpanded && "justify-center"}`
                             }
                           >
                             <Icon className="w-5 h-5 shrink-0" />
-                            {open && (
+                            {sidebarExpanded && (
                               <span className="animate-fadeIn">{link.name}</span>
                             )}
                           </NavLink>
@@ -222,7 +210,7 @@ export default function Sidebar({ children }) {
       {/* ================= MAIN CONTENT ================= */}
       <div
         className="flex-1 transition-all duration-300 ease-in-out"
-        style={{ marginLeft: open ? "16rem" : "5rem" }}
+        style={{ marginLeft: sidebarExpanded ? "16rem" : "5rem" }}
       >
         {children}
       </div>

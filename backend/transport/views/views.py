@@ -6,6 +6,7 @@ from rest_framework.exceptions import PermissionDenied
 from django_filters.rest_framework import DjangoFilterBackend
 from django.db.models import Q
 
+from api.audit import AuditActorMixin, record_audit
 from api.models import User
 from ..models import (
     Transportation,
@@ -29,7 +30,7 @@ from ..serializers import (
 # ADMIN — full CRUD, staff only
 # =======================================================================
 
-class TransportationAdminViewSet(viewsets.ModelViewSet):
+class TransportationAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     serializer_class = TransportationSerializer
     queryset = Transportation.objects.select_related(
@@ -42,7 +43,7 @@ class TransportationAdminViewSet(viewsets.ModelViewSet):
     ]
 
 
-class VehicleAdminViewSet(viewsets.ModelViewSet):
+class VehicleAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     serializer_class = VehicleSerializer
     queryset = Vehicle.objects.select_related('driver').all()
@@ -53,7 +54,7 @@ class VehicleAdminViewSet(viewsets.ModelViewSet):
     ]
 
 
-class LocationAdminViewSet(viewsets.ModelViewSet):
+class LocationAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
     serializer_class = LocationSerializer
     queryset = Location.objects.all()
@@ -72,7 +73,7 @@ class DriverAdminViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = User.objects.filter(role='driver').order_by('username')
 
 
-class TransportationStopAdminViewSet(viewsets.ModelViewSet):
+class TransportationStopAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     """
     Full CRUD over stops, nested under a Transportation via URL kwarg
     `transportation_pk` (adjust to match your router config, e.g.
@@ -95,7 +96,7 @@ class TransportationStopAdminViewSet(viewsets.ModelViewSet):
         serializer.save(transportation_id=transportation_pk)
 
 
-class TransportPassengerAdminViewSet(viewsets.ModelViewSet):
+class TransportPassengerAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     """
     Full CRUD over passengers, nested under a Transportation via URL kwarg
     `transportation_pk`. Also exposes bulk turnover / early-departure actions.
@@ -155,6 +156,7 @@ class TransportPassengerAdminViewSet(viewsets.ModelViewSet):
 # =======================================================================
 
 class TransportationDriverViewSet(
+    AuditActorMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
     mixins.UpdateModelMixin,
@@ -249,7 +251,7 @@ class SavedGuestsView(APIView):
         return Response(ReservableGuestSerializer(guests, many=True).data)
 
 
-class ReservationListCreateView(APIView):
+class ReservationListCreateView(AuditActorMixin, APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -327,7 +329,7 @@ class IsTransportAdmin(BasePermission):
         )
 
 
-class AdminAPIView(APIView):
+class AdminAPIView(AuditActorMixin, APIView):
     permission_classes = [IsAuthenticated, IsTransportAdmin]
 
 
@@ -498,7 +500,7 @@ class IsDriver(BasePermission):
         )
 
 
-class DriverAPIView(APIView):
+class DriverAPIView(AuditActorMixin, APIView):
     permission_classes = [IsAuthenticated, IsDriver]
 
 
@@ -752,7 +754,16 @@ class AlightAtStopView(DriverAPIView):
                 scheduled |= Q(alighting_stop__isnull=True)
             here = trip.passengers.filter(scheduled)
 
+            changed_passengers = list(
+                here.filter(status="checked_in").select_for_update()
+            )
             completed = here.filter(status="checked_in").update(status="completed")
+            for passenger in changed_passengers:
+                record_audit(
+                    passenger,
+                    "status_changed",
+                    {"status": {"from": "checked_in", "to": "completed"}},
+                )
             still_reserved = here.filter(status="reserved").count()
 
         return trip_response(

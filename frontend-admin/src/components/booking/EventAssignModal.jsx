@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import moment from "moment";
 import { CSSTransition } from "react-transition-group"; // For fade animations
+import { showGlobalMessage } from "../../utils/globalMessages";
 import "../../styles/EventModal.css";
 
 export default function EventAssignModal({ eventModal, setEventModal, assignEvent, createItem }) {
@@ -46,12 +47,12 @@ export default function EventAssignModal({ eventModal, setEventModal, assignEven
   // 🚨 CORRECTED FUNCTION: Includes integer casting and robust error handling
   const handleCreate = async () => {
     if (!newEvent.start_date || !newEvent.end_date) {
-      return alert("Start and End dates required");
+      return showGlobalMessage("Start and End dates required", "warning");
     }
 
     if (!booking.package) {
       // Safety check just in case the parent component missed it
-      return alert("Error: Cannot create event, the booking is missing a package ID.");
+      return showGlobalMessage("Error: Cannot create event, the booking is missing a package ID.", "error");
     }
 
     const eventData = {
@@ -64,9 +65,6 @@ export default function EventAssignModal({ eventModal, setEventModal, assignEven
 
     if (createdSuccessfully) {
       handleClose();
-    } else {
-      // Provide crucial feedback to the user and prompt console check
-      alert("Failed to create the event. Please check the browser console for API errors.");
     }
   };
 

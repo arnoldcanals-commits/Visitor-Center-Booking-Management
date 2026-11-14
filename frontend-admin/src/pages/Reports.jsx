@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import "../Styles/Reports.css";
 import AccentBadge from '../components/AccentBadge';
+import { showGlobalMessage } from '../utils/globalMessages';
 import TravelReports from './Travelreports';
 
 // Set this to your organization's display name — it appears on the printed
@@ -143,13 +144,11 @@ const Reports = () => {
         created_at: new Date().toISOString()
       });
       if (success) {
-        alert("Audit saved to history.");
-      } else {
-        alert("Could not save the report. Please try again.");
+        showGlobalMessage("Audit saved to history.", "success");
       }
     } catch (err) {
       console.error('Failed to save report:', err);
-      alert("Could not save the report. Please try again.");
+      showGlobalMessage("Could not save the report. Please try again.", "error", err);
     }
   };
 
@@ -158,7 +157,7 @@ const Reports = () => {
   // in the UI — so the file is a complete, standalone record, not just rows.
   const downloadSpreadsheet = () => {
     const data = reportType === 'booking' ? bookingReport : stationReport;
-    if (!data.length) return alert("No data to export");
+    if (!data.length) return showGlobalMessage("No data to export", "warning");
     setIsExporting(true);
     try {
       const period = describePeriod(filterLevel, dateFilter);

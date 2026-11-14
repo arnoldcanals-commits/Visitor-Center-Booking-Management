@@ -1,6 +1,11 @@
-from django.db.models.signals import pre_save, post_save
+import json
+
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models.signals import m2m_changed, post_save, pre_delete, pre_save
 from django.dispatch import receiver
-from .models import Booking, Notification, User, Review, Permit
+
+from .audit import record_audit
+from .models import AuditLog, BaseModel, Booking, Notification, User, Review, Permit
 
 # Helper to notify all staff/admins
 def notify_staff(title, message, booking=None):
@@ -13,6 +18,190 @@ def notify_staff(title, message, booking=None):
             message=message,
             related_booking=booking
         )
+
+
+_AUDIT_EXCLUDED_FIELDS = {
+    "id",
+    "created_at",
+    "updated_at",
+    "deleted_at",
+    "last_login",
+}
+_AUDIT_EXCLUDED_MODELS = {"api.auditlog", "api.notification"}
+_AUDIT_EXTRA_MODELS = {
+    "api.dashboardhero",
+    "api.dashboardimage",
+    "billing.bill",
+    "billing.billitem",
+    "billing.billtemplate",
+}
+
+
+def _is_audited_model(sender):
+    label = sender._meta.label_lower
+    if label in _AUDIT_EXCLUDED_MODELS:
+        return False
+    return issubclass(sender, BaseModel) or label in _AUDIT_EXTRA_MODELS
+
+
+def _auditable_fields(sender):
+    return [
+        field
+        for field in sender._meta.concrete_fields
+        if field.name not in _AUDIT_EXCLUDED_FIELDS
+    ]
+
+
+def _is_sensitive_field(field):
+    return any(secret in field.name.lower() for secret in ("password", "token", "secret"))
+
+
+def _json_safe(value):
+    if hasattr(value, "storage") and hasattr(value, "name"):
+        value = value.name
+    return json.loads(json.dumps(value, cls=DjangoJSONEncoder))
+
+
+def _audit_changes(fields, old_values, new_values, created=False):
+    changes = {}
+    for field in fields:
+        name = field.name
+        old_value = old_values.get(field.attname) if old_values else None
+        new_value = new_values.get(field.attname)
+        if created and new_value is None:
+            continue
+        if not created and old_value == new_value:
+            continue
+        if _is_sensitive_field(field):
+            if not created:
+                changes[name] = {"changed": True}
+            continue
+        changes[name] = {
+            "from": _json_safe(old_value),
+            "to": _json_safe(new_value),
+        }
+    return changes
+
+
+@receiver(pre_save)
+def capture_audit_before_save(sender, instance, **kwargs):
+    if not _is_audited_model(sender) or instance.pk is None:
+        return
+
+    field_names = [field.attname for field in _auditable_fields(sender)]
+    instance._audit_old_values = (
+        sender._base_manager.filter(pk=instance.pk)
+        .values(*field_names)
+        .first()
+    )
+
+
+@receiver(post_save)
+def write_model_audit(sender, instance, created, **kwargs):
+    if not _is_audited_model(sender):
+        return
+
+    fields = _auditable_fields(sender)
+    old_values = getattr(instance, "_audit_old_values", None)
+    new_values = (
+        sender._base_manager.filter(pk=instance.pk)
+        .values(*(field.attname for field in fields))
+        .first()
+        or {}
+    )
+    changes = _audit_changes(fields, old_values, new_values, created=created)
+    if hasattr(instance, "_audit_old_values"):
+        del instance._audit_old_values
+
+    if not created and not changes:
+        return
+
+    if created:
+        action = "created"
+    elif changes.get("is_active", {}).get("to") is False:
+        action = "deleted"
+    elif changes.get("is_archived", {}).get("to") is True:
+        action = "archived"
+    elif "status" in changes:
+        new_status = changes["status"]["to"]
+        action = new_status if sender._meta.label_lower == "billing.bill" else "status_changed"
+    else:
+        action = "updated"
+
+    record_audit(instance, action, changes)
+
+
+@receiver(pre_delete)
+def write_delete_audit(sender, instance, **kwargs):
+    if _is_audited_model(sender):
+        record_audit(instance, "deleted", {"deleted": True})
+
+
+@receiver(m2m_changed)
+def write_many_to_many_audit(sender, instance, action, reverse, model, pk_set, **kwargs):
+    if action == "pre_clear":
+        relations = (
+            [
+                relation
+                for relation in instance._meta.related_objects
+                if relation.many_to_many and relation.through is sender
+            ]
+            if reverse
+            else [
+                field
+                for field in instance._meta.many_to_many
+                if field.remote_field.through is sender
+            ]
+        )
+        if relations:
+            relation_name = (
+                relations[0].get_accessor_name() if reverse else relations[0].name
+            )
+            instance._audit_cleared_relation_ids = list(
+                getattr(instance, relation_name).values_list("pk", flat=True)
+            )
+            instance._audit_cleared_relation_name = relation_name
+        return
+    if action not in {"post_add", "post_remove", "post_clear"}:
+        return
+    if not _is_audited_model(instance.__class__):
+        return
+
+    relation_action = {
+        "post_add": "added",
+        "post_remove": "removed",
+        "post_clear": "cleared",
+    }[action]
+    related_ids = sorted(pk_set or [])
+    if action == "post_clear":
+        related_ids = getattr(instance, "_audit_cleared_relation_ids", [])
+        if hasattr(instance, "_audit_cleared_relation_ids"):
+            del instance._audit_cleared_relation_ids
+    relation_name = getattr(instance, "_audit_cleared_relation_name", None)
+    if hasattr(instance, "_audit_cleared_relation_name"):
+        del instance._audit_cleared_relation_name
+    if not relation_name:
+        relations = (
+            [
+                relation
+                for relation in instance._meta.related_objects
+                if relation.many_to_many and relation.through is sender
+            ]
+            if reverse
+            else [
+                field
+                for field in instance._meta.many_to_many
+                if field.remote_field.through is sender
+            ]
+        )
+        relation_name = (
+            relations[0].get_accessor_name() if reverse else relations[0].name
+        ) if relations else model._meta.model_name
+    record_audit(
+        instance,
+        f"relation_{relation_action}",
+        {relation_name: {"operation": relation_action, "ids": related_ids}},
+    )
 
 
 # Stash the pre-save value of requested_cancellation on the instance so the

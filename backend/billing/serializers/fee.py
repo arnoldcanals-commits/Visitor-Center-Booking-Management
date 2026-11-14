@@ -56,6 +56,15 @@ class BillItemSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         item_type = data.get("item_type")
+        bill = data.get("bill", getattr(self.instance, "bill", None))
+        booking_guest = data.get(
+            "booking_guest", getattr(self.instance, "booking_guest", None)
+        )
+
+        if bill and booking_guest and booking_guest.booking_id != bill.booking_id:
+            raise serializers.ValidationError({
+                "booking_guest": "Guest must belong to this bill's booking."
+            })
 
         if item_type == "fee" and not data.get("fee_type"):
             raise serializers.ValidationError({

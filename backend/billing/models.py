@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 from api.models import Booking, BookingGuest, BaseModel
+from decimal import Decimal
 import uuid, os
 import logging
 
@@ -195,7 +196,8 @@ class Bill(models.Model):
         new_total =  items_total
 
         if commit:
-            Bill.objects.filter(pk=self.pk).update(total_amount=new_total)
+            self.total_amount = new_total
+            self.save(update_fields=["total_amount"])
 
         return new_total
 
@@ -210,6 +212,7 @@ class BillItem(models.Model):
     ITEM_TYPE_CHOICES = [
         ("guest", "Guest Charge"),
         ("fee", "Additional Fee"),
+        ("activity", "Activity"),
     ]
 
     bill = models.ForeignKey(
@@ -239,6 +242,14 @@ class BillItem(models.Model):
         blank=True
     )
 
+    activity = models.ForeignKey(
+        "api.Activity",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="billing_items",
+    )
+
     description = models.CharField(max_length=255, blank=True)
     base_amount = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
@@ -246,29 +257,55 @@ class BillItem(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["bill", "booking_guest", "activity"],
+                condition=models.Q(item_type="activity"),
+                name="uniq_bill_guest_activity",
+            ),
+        ]
+
     # ------------------------------
     # Save
     # ------------------------------
     def save(self, *args, **kwargs):
         is_new = self.pk is None
 
-        # Enforce booking_guest belongs to bill's booking
-        if self.item_type == "guest" and self.booking_guest:
+        if self.booking_guest:
             if self.booking_guest.booking_id != self.bill.booking_id:
                 raise ValueError("Guest does not belong to this bill’s booking")
 
-            self.description = f"Charge for {self.booking_guest.guest.full_name}"
+        if self.item_type == "guest" and self.booking_guest:
+            package = self.bill.booking.package
+            package_name = package.name if package else "Package"
+            self.description = f"{package_name} package"
             self.base_amount = self.bill.base_amount if self.base_amount is None else self.base_amount
 
         if self.item_type == "fee" and self.fee_type:
             self.description = self.fee_type.name
             self.base_amount = self.fee_type.default_amount
 
+        if self.item_type == "activity":
+            if not self.booking_guest or not self.activity:
+                raise ValueError("Activity bill items require an activity and booking guest")
+            booking = self.booking_guest.booking
+            if (
+                self.activity.package_id != booking.package_id
+                or not booking.selected_activities.filter(pk=self.activity_id).exists()
+            ):
+                raise ValueError("Activity must be selected for the guest's booking")
+            self.description = self.activity.name
+            self.base_amount = (
+                self.activity.extra_price if self.base_amount is None else self.base_amount
+            )
+
         if self.base_amount is None:
             self.base_amount = 0
 
-        base = self.base_amount or 0
-        self.final_amount = max(base - self.discount_amount, 0)
+        base = Decimal(str(self.base_amount or 0))
+        discount = Decimal(str(self.discount_amount or 0))
+        self.final_amount = max(base - discount, Decimal("0.00"))
 
         super().save(*args, **kwargs)
 

@@ -1,4 +1,4 @@
-import { useContext, useState, useEffect } from "react";
+import { useContext, useEffect, useState } from "react";
 import { NavLink, Link } from "react-router-dom";
 import { AuthContext } from "./Auth";
 import api from "../api";
@@ -9,8 +9,6 @@ import {
   Users,
   Info,
   Plane,
-  PanelLeftClose,
-  PanelLeftOpen,
   BadgeCheck,
   Home,
 } from "lucide-react";
@@ -25,13 +23,10 @@ const NAV_ITEMS = [
   { to: "/travel", label: "Travel", icon: Plane },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ collapsed }) {
   const { theme, isAuthenticated } = useContext(AuthContext);
   const accent = theme?.themeColor || "#3b82f6";
-  const [collapsed, setCollapsed] = useState(false);
   const [config, setConfig] = useState(null);
-
-  const toggleSidebar = () => setCollapsed((prev) => !prev);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -81,22 +76,6 @@ export default function Sidebar() {
             {config?.website_name || "TravelCo"}
           </span>
         )}
-      </div>
-
-      {/* Toggle button row — always below the brand, own dedicated space */}
-      <div className={`flex shrink-0 border-b border-neutral-200 dark:border-neutral-800 py-2 ${collapsed ? "justify-center" : "justify-end px-4"}`}>
-        <button
-          onClick={toggleSidebar}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="w-9 h-9 flex items-center justify-center rounded-lg shrink-0 text-white shadow-sm transition-transform duration-150 hover:scale-105"
-          style={{ backgroundColor: accent }}
-        >
-          {collapsed ? (
-            <PanelLeftOpen className="w-4.5 h-4.5" strokeWidth={2.25} />
-          ) : (
-            <PanelLeftClose className="w-4.5 h-4.5" strokeWidth={2.25} />
-          )}
-        </button>
       </div>
 
       {/* Nav */}

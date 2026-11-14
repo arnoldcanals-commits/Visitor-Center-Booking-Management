@@ -2,6 +2,7 @@
 import React, { useContext } from "react";
 import Form from "../components/Form";
 import { AuthContext } from "../contexts/AuthContext";
+import { showGlobalMessage } from "../utils/globalMessages";
 
 function Login() {
   const { login } = useContext(AuthContext);
@@ -17,7 +18,7 @@ function Login() {
   if (!success) {
     // Login failed — don't leave the flag armed for a future session.
     sessionStorage.removeItem("showWelcome");
-    alert("Login failed. Check your credentials.");
+    showGlobalMessage("Login failed. Check your credentials.", "error");
   }
 };
 

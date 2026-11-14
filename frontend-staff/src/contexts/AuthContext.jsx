@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useRef } from "react";
 import api from "../api";
 import { jwtDecode } from "jwt-decode";
+import { showGlobalMessage } from "../utils/globalMessages";
 
 export const AuthContext = createContext();
 
@@ -65,7 +66,7 @@ export const AuthProvider = ({ children }) => {
       const data = response.data;
 
       if (!STAFF_ROLES.includes(data.role)) {
-        alert("Unauthorized account.");
+        showGlobalMessage("Unauthorized account.", "error");
         return null;
       }
 

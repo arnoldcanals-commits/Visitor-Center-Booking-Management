@@ -1,5 +1,6 @@
 import axios from "axios";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "./constants";
+import { queueGlobalApiError } from "./utils/globalMessages";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
@@ -99,6 +100,7 @@ api.interceptors.response.use(
       }
     }
 
+    queueGlobalApiError(error);
     return Promise.reject(error);
   }
 );

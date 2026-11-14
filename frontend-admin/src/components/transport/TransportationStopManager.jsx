@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 
 import api from '../../api';
 import { AuthContext } from '../../contexts/AuthContext';
+import { showGlobalMessage } from '../../utils/globalMessages';
 
 import {
   MapPin, X, Plus, Trash2, SquarePen, ArrowUp, ArrowDown,
@@ -132,7 +133,7 @@ export default function TransportationStopManager({ transportation, isOpen, onCl
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!addFormData.location_id) {
-      alert('Please select a location for the stop.');
+      showGlobalMessage('Please select a location for the stop.', "warning");
       return;
     }
     setSavingId('new');
@@ -151,7 +152,7 @@ export default function TransportationStopManager({ transportation, isOpen, onCl
       await fetchStops();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to add stop.');
+      showGlobalMessage(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to add stop.', "error", err);
     } finally {
       setSavingId(null);
     }
@@ -186,7 +187,7 @@ export default function TransportationStopManager({ transportation, isOpen, onCl
   const handleEditSubmit = async (e, stopId) => {
     e.preventDefault();
     if (!editFormData.location_id) {
-      alert('Please select a location for the stop.');
+      showGlobalMessage('Please select a location for the stop.', "warning");
       return;
     }
     setSavingId(stopId);
@@ -204,7 +205,7 @@ export default function TransportationStopManager({ transportation, isOpen, onCl
       await fetchStops();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to update stop.');
+      showGlobalMessage(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to update stop.', "error", err);
     } finally {
       setSavingId(null);
     }
@@ -221,7 +222,7 @@ export default function TransportationStopManager({ transportation, isOpen, onCl
       await fetchStops();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to remove stop.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to remove stop.', "error", err);
     } finally {
       setSavingId(null);
     }
@@ -245,7 +246,7 @@ export default function TransportationStopManager({ transportation, isOpen, onCl
       await fetchStops();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to reorder stops.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to reorder stops.', "error", err);
       await fetchStops(); // resync in case one PATCH succeeded and the other failed
     } finally {
       setSavingId(null);

@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from rest_framework import status
 
+from ..audit import AuditActorMixin
 from ..models import *
 from ..serializers import *
 
@@ -21,7 +22,7 @@ from billing.serializers.admin import (
 # BASE ADMIN VIEWS
 # ============================================================
 
-class AdminBaseView:
+class AdminBaseView(AuditActorMixin):
     permission_classes = [IsAdminUser]
 
     def get_serializer_context(self):
@@ -103,12 +104,19 @@ class AdminAllDataView(AdminBaseView, APIView):
             "reports": AdminReportSerializer(Report.objects.all(), many=True, context=context).data,
             "notifications": AdminNotificationSerializer(Notification.objects.all(), many=True, context=context).data,
             "audit_logs": AdminAuditLogSerializer(
-                AuditLog.objects.all().order_by("-created_at")[:100], 
+                AuditLog.objects.select_related("user", "content_type")
+                .order_by("-created_at")[:100],
                 many=True, context=context
             ).data,
             "reviews": AdminReviewSerializer(Review.objects.all(), many=True, context=context).data,
             # Billing
-            "bills": AdminBillSerializer(Bill.objects.all(), many=True, context=context).data,
+            "bills": AdminBillSerializer(
+                Bill.objects.select_related("booking").prefetch_related(
+                    "booking__booking_guests__guest"
+                ),
+                many=True,
+                context=context,
+            ).data,
             "bill_items": AdminBillItemSerializer(BillItem.objects.all(), many=True, context=context).data,
             "bill_templates": AdminBillTemplateSerializer(BillTemplate.objects.all(), many=True, context=context).data,
             "fee_types": AdminFeeTypeSerializer(FeeType.objects.all(), many=True, context=context).data,
@@ -496,7 +504,7 @@ class DashboardHeroView(generics.RetrieveAPIView):
 # IsAdminUser checks user.is_staff. If your app uses a custom role or
 # is_superuser, swap in your own permission class here.
 
-class DashboardHeroAdminViewSet(viewsets.ModelViewSet):
+class DashboardHeroAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     """/api/dashboard/admin/heroes/  (list, create, retrieve, update, delete)"""
 
     queryset = DashboardHero.objects.prefetch_related("images")
@@ -504,7 +512,7 @@ class DashboardHeroAdminViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminUser]
 
 
-class DashboardImageAdminViewSet(viewsets.ModelViewSet):
+class DashboardImageAdminViewSet(AuditActorMixin, viewsets.ModelViewSet):
     """/api/dashboard/admin/images/?hero=<id>  (multipart upload supported)"""
 
     serializer_class = DashboardImageAdminSerializer

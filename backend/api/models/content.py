@@ -8,8 +8,6 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.apps import apps
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 import uuid
 import os
 from .core import *
@@ -93,22 +91,6 @@ class AuditLog(BaseModel):
     changes = models.JSONField(blank=True, null=True)
 
    
-
-
-@receiver(post_save)
-def auto_audit(sender, instance, created, **kwargs):
-    if not issubclass(sender, BaseModel):
-     return
-
-    if sender == AuditLog:
-        return
-
-    AuditLog.objects.create(
-        content_type=ContentType.objects.get_for_model(sender),
-        object_id=str(instance.pk),
-        action="created" if created else "updated"
-    )
-
 
 
 class SiteConfiguration(BaseModel):

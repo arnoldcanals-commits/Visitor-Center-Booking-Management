@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import api from "../api";
 import { jwtDecode } from "jwt-decode";
+import { showGlobalMessage } from "../utils/globalMessages";
 
 export const AuthContext = createContext();
 
@@ -82,7 +83,7 @@ export const AuthProvider = ({ children }) => {
       const decoded = jwtDecode(data.access);
 
       if (!decoded.is_admin) {
-        alert("Incorrect Account Credentials.");
+        showGlobalMessage("Incorrect Account Credentials.", "error");
         return false;
       }
 

@@ -3,6 +3,7 @@
 from rest_framework import generics, permissions
 from django.db.models import Count, Q, Prefetch
 
+from api.audit import AuditActorMixin
 from api.models import (
     Review,
     Booking,
@@ -36,7 +37,7 @@ class IsTourGuide(permissions.BasePermission):
 # =====================================================
 # Profile (Self)
 # =====================================================
-class TourGuideProfileView(generics.RetrieveUpdateAPIView):
+class TourGuideProfileView(AuditActorMixin, generics.RetrieveUpdateAPIView):
     """
     GET   -> View own profile
     PATCH -> Update allowed profile fields
@@ -48,7 +49,7 @@ class TourGuideProfileView(generics.RetrieveUpdateAPIView):
         return self.request.user
 
 
-class TourGuideStatusUpdateView(generics.UpdateAPIView):
+class TourGuideStatusUpdateView(AuditActorMixin, generics.UpdateAPIView):
     """
     PATCH -> Update availability / status only
     """

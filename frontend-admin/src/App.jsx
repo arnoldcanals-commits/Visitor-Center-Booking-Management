@@ -18,6 +18,7 @@ import Transport from "./pages/Transport";
 import FeesManager from "./pages/FeesManager";
 import SystemSettings from "./pages/SystemSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
+import GlobalMessageModal from "./components/GlobalMessageModal";
 import AdminPermitPage from "./pages/Permits";
 import { AuthProvider, AuthContext } from "./contexts/AuthContext";
 import { AdminDataProvider } from "./contexts/AdminDataContext";
@@ -88,9 +89,12 @@ export default function App() {
     <AuthProvider>
       <AdminDataProvider>
         <AdminBillingProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+            <GlobalMessageModal />
+          </>
         </AdminBillingProvider>
       </AdminDataProvider>
     </AuthProvider>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import api from '../../api';
 import { AuthContext } from '../../contexts/AuthContext';
+import { showGlobalMessage } from '../../utils/globalMessages';
 import {
   Users, X, Plus, Trash2, SquarePen, Save, LogOut, DoorOpen, Phone
 } from "lucide-react";
@@ -154,7 +155,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
   const handleAddSubmit = async (e) => {
     e.preventDefault();
     if (!addFormData.name.trim()) {
-      alert('Please enter the passenger\'s name.');
+      showGlobalMessage('Please enter the passenger\'s name.', "warning");
       return;
     }
     setSavingId('new');
@@ -172,7 +173,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
       await fetchPassengers();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to add passenger. Trip may be at full capacity for that segment.');
+      showGlobalMessage(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to add passenger. Trip may be at full capacity for that segment.', "error", err);
     } finally {
       setSavingId(null);
     }
@@ -206,7 +207,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
   const handleEditSubmit = async (e, passengerId) => {
     e.preventDefault();
     if (!editFormData.name.trim()) {
-      alert('Please enter the passenger\'s name.');
+      showGlobalMessage('Please enter the passenger\'s name.', "warning");
       return;
     }
     setSavingId(passengerId);
@@ -223,7 +224,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
       await fetchPassengers();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to update passenger. Check the boarding/alighting range and capacity.');
+      showGlobalMessage(err.response?.data?.detail || err.response?.data?.non_field_errors?.[0] || 'Failed to update passenger. Check the boarding/alighting range and capacity.', "error", err);
     } finally {
       setSavingId(null);
     }
@@ -240,7 +241,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
       await fetchPassengers();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to remove passenger.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to remove passenger.', "error", err);
     } finally {
       setSavingId(null);
     }
@@ -251,7 +252,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
   // ─────────────────────────────────────────────
   const handleMarkAlighted = async () => {
     if (!turnoverStopId) {
-      alert('Select a stop first.');
+      showGlobalMessage('Select a stop first.', "warning");
       return;
     }
     setTurnoverBusy(true);
@@ -261,10 +262,10 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
       await fetchPassengers();
       notifyChanged();
       if (updated === 0) {
-        alert('No active passengers were scheduled to alight at that stop.');
+        showGlobalMessage('No active passengers were scheduled to alight at that stop.', "info");
       }
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to process turnover for that stop.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to process turnover for that stop.', "error", err);
     } finally {
       setTurnoverBusy(false);
     }
@@ -287,7 +288,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
 
   const submitDepartEarly = async (passengerId) => {
     if (!departStopId) {
-      alert('Select which stop they got off at.');
+      showGlobalMessage('Select which stop they got off at.', "warning");
       return;
     }
     setSavingId(passengerId);
@@ -300,7 +301,7 @@ export default function TransportPassengerManager({ transportation, isOpen, onCl
       await fetchPassengers();
       notifyChanged();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to record early departure.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to record early departure.', "error", err);
     } finally {
       setSavingId(null);
     }

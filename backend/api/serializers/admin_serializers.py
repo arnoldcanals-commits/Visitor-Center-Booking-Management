@@ -240,14 +240,12 @@ class AdminTourEventSerializer(AdminBaseSerializer):
 
         event = TourEvent.objects.create(**validated_data)
 
-        EventStation.objects.bulk_create([
-            EventStation(
+        for station_data in event_stations_data:
+            EventStation.objects.create(
                 event=event,
                 station=station_data["station"],
                 order=station_data["order"]
             )
-            for station_data in event_stations_data
-        ])
 
         return event
 
@@ -261,14 +259,12 @@ class AdminTourEventSerializer(AdminBaseSerializer):
 
             instance.event_stations.all().delete()
 
-            EventStation.objects.bulk_create([
-                EventStation(
+            for station_data in event_stations_data:
+                EventStation.objects.create(
                     event=instance,
                     station=station_data["station"],
                     order=station_data["order"]
                 )
-                for station_data in event_stations_data
-            ])
 
         return instance
 
@@ -313,10 +309,23 @@ class AdminNotificationSerializer(AdminBaseSerializer):
 # ============================================================
 
 class AdminAuditLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source="user.username", read_only=True, default="System")
+    content_type_name = serializers.CharField(source="content_type.model", read_only=True)
+
     class Meta:
         model = AuditLog
-        fields = "__all__"
-        read_only_fields = ["__all__"]
+        fields = [
+            "id",
+            "user",
+            "user_name",
+            "content_type",
+            "content_type_name",
+            "object_id",
+            "action",
+            "changes",
+            "created_at",
+        ]
+        read_only_fields = fields
 
 
 # ============================================================

@@ -6,6 +6,7 @@ from api.models import BaseModel
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import transaction
 from django.utils import timezone
+from api.audit import record_audit
 
 class Location(BaseModel):
     name = models.CharField(max_length=200)
@@ -175,10 +176,20 @@ class Transportation(BaseModel):
         scheduled to get off at this stop as completed, freeing their
         seats for anyone boarding further down the route.
         """
-        return self.passengers.filter(
+        passengers = self.passengers.filter(
             alighting_stop=stop,
             status__in=["reserved", "checked_in"],
-        ).update(status="completed")
+        )
+        with transaction.atomic():
+            changed_passengers = list(passengers.select_for_update())
+            updated_count = passengers.update(status="completed")
+            for passenger in changed_passengers:
+                record_audit(
+                    passenger,
+                    "status_changed",
+                    {"status": {"from": passenger.status, "to": "completed"}},
+                )
+        return updated_count
 
     def depart_passenger_early(self, passenger, stop, reason=None):
         """

@@ -24,9 +24,11 @@ import './css/style.css';
 import Profile from "./pages/Profile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AuthPanel from "./components/AuthPanel";
+import GlobalMessageModal from "./components/GlobalMessageModal";
 import InformationView from "./pages/Information";
 import Footer from "./components/Footer";
 import Sidebar from "./components/Sidebar";
+import { SidebarContext } from "./components/SidebarContext";
 
 import VerifyEmail from "./pages/Verify";
 import AuthProvider, { AuthContext } from "./components/Auth";
@@ -50,6 +52,7 @@ function App() {
   );
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
  
 
   const openAuth = (mode = "login") => {
@@ -60,24 +63,24 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-900">
-          {/* Column 1: sidebar */}
-          <Sidebar />
+        <SidebarContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed }}>
+          <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-900">
+            {/* Column 1: sidebar */}
+            <Sidebar collapsed={sidebarCollapsed} />
 
-          {/* Column 2: everything else, stacked vertically */}
-          <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
-           
+            {/* Column 2: everything else, stacked vertically */}
+            <div className="flex flex-col flex-1 min-w-0 overflow-y-auto">
 
-            {authPanelOpen && (
-              <AuthPanel
-                defaultMode={authMode}
-                closePanel={() => setAuthPanelOpen(false)}
-                onLoginSuccess={() => setIsAuthenticated(true)}
-              />
-            )}
+              {authPanelOpen && (
+                <AuthPanel
+                  defaultMode={authMode}
+                  closePanel={() => setAuthPanelOpen(false)}
+                  onLoginSuccess={() => setIsAuthenticated(true)}
+                />
+              )}
 
-            <main className="flex-1">
-              <Routes>
+              <main className="flex-1">
+                <Routes>
                 <Route
                   path="/protected"
                   element={
@@ -120,12 +123,14 @@ function App() {
                 <Route path="/travel" element={<Travel />} />
                 <Route path="/guests/" element={<GuestManagement />} />
                  <Route path="/permit/" element={<PermitPage />} />
-              </Routes>
-            </main>
+                </Routes>
+              </main>
 
-            <Footer />
+              <Footer />
+            </div>
           </div>
-        </div>
+          <GlobalMessageModal />
+        </SidebarContext.Provider>
       </AuthProvider>
     </BrowserRouter>
   );

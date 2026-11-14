@@ -2,6 +2,7 @@ import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import LoadingIndicator from "./LoadingIndicator";
 import { AuthContext } from "../contexts/AuthContext";
+import { showGlobalMessage } from "../utils/globalMessages";
 
 function Form({ onAuthSuccess }) {
   const { login } = useContext(AuthContext);
@@ -37,7 +38,7 @@ function Form({ onAuthSuccess }) {
     const user = await login({ email, password });
 
     if (!user) {
-      alert("Invalid credentials or unauthorized account.");
+      showGlobalMessage("Invalid credentials or unauthorized account.", "error");
       return;
     }
 
@@ -50,7 +51,7 @@ function Form({ onAuthSuccess }) {
     navigate(ROLE_HOME[user.role], { replace: true });
   } catch (error) {
     console.error("Login error:", error);
-    alert("Login failed.");
+    showGlobalMessage("Login failed.", "error", error);
   } finally {
     setLoading(false);
   }

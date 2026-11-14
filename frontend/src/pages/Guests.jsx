@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import LoadingIndicator from "../components/LoadingIndicator";
 import TopBar from "../components/TopBar";
+import { showGlobalMessage } from "../utils/globalMessages";
 
 const GENDER_OPTIONS = ["Male", "Female", "Other"];
 const PAGE_SIZE_OPTIONS = [6, 12, 24];
@@ -367,9 +368,9 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
     } catch (err) {
       console.error("Failed to save guest:", err);
       if (err.response?.status === 413) {
-        alert("The file is too large for the server. Please use a smaller file.");
+        showGlobalMessage("The file is too large for the server. Please use a smaller file.", "error", err);
       } else {
-        alert("Failed to save guest. Please check your input.");
+        showGlobalMessage("Failed to save guest. Please check your input.", "error", err);
       }
     } finally {
       submittingRef.current = false;
@@ -391,7 +392,7 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
       fetchGuests();
     } catch (err) {
       console.error("Failed to delete guest:", err);
-      alert("Failed to delete guest.");
+      showGlobalMessage("Failed to delete guest.", "error", err);
     } finally {
       deletingRef.current = false;
       setDeleting(false);
@@ -408,12 +409,18 @@ export default function GuestManagement({ embedded = false, onClose } = {}) {
     setDeleting(true);
     try {
       // one failure shouldn't stop the rest
-      const results = await Promise.allSettled(ids.map((id) => api.delete(`api/guests/${id}/`)));
+      const results = await Promise.allSettled(ids.map((id) => api.delete(
+        `api/guests/${id}/`,
+        { suppressGlobalMessage: true }
+      )));
       const failedIds = ids.filter((_, i) => results[i].status === "rejected");
 
       if (failedIds.length > 0) {
         console.error("Some deletions failed:", failedIds);
-        alert(`${ids.length - failedIds.length} removed, ${failedIds.length} failed. The failed ones are still selected so you can retry.`);
+        showGlobalMessage(
+          `${ids.length - failedIds.length} removed, ${failedIds.length} failed. The failed ones are still selected so you can retry.`,
+          "warning"
+        );
         setSelectedIds(new Set(failedIds));
       } else {
         exitSelectMode();

@@ -1,17 +1,10 @@
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
-from django.contrib.auth.models import AbstractUser
-from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
-from django.db.models import Avg
-from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.apps import apps
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import uuid
-import os
 from .core import *
 from .catalogue import TourPackage
 from .bookings import QRCode, Booking
@@ -162,11 +155,31 @@ class TourEvent(BaseModel):
 
         if is_update:
             # Propagate assigned guide & active itinerary to bookings
-            if self.bookings.exists():
-                updated_count = self.bookings.update(
-                    assigned_guide=self.assigned_guide,
-                    itinerary=self.active_itinerary
-                )
+            bookings = list(
+                self.bookings.only("pk", "assigned_guide_id", "itinerary_id")
+            )
+            if bookings:
+                from ..audit import record_audit
+
+                with transaction.atomic():
+                    updated_count = self.bookings.update(
+                        assigned_guide=self.assigned_guide,
+                        itinerary=self.active_itinerary
+                    )
+                    for booking in bookings:
+                        changes = {}
+                        if booking.assigned_guide_id != self.assigned_guide_id:
+                            changes["assigned_guide"] = {
+                                "from": booking.assigned_guide_id,
+                                "to": self.assigned_guide_id,
+                            }
+                        if booking.itinerary_id != self.active_itinerary_id:
+                            changes["itinerary"] = {
+                                "from": booking.itinerary_id,
+                                "to": self.active_itinerary_id,
+                            }
+                        if changes:
+                            record_audit(booking, "updated", changes)
                 print(f"[DEBUG] Propagated event changes to {updated_count} bookings for Event {self.id}")
 
     def __str__(self):
@@ -194,7 +207,24 @@ class TourEventItinerary(BaseModel):
 
         # Update bookings only if this is the active itinerary
         if self.event.active_itinerary_id == self.pk:
-            updated_count = self.event.bookings.update(itinerary=self)
+            bookings = list(self.event.bookings.only("pk", "itinerary_id"))
+            if bookings:
+                from ..audit import record_audit
+
+                with transaction.atomic():
+                    self.event.bookings.update(itinerary=self)
+                    for booking in bookings:
+                        if booking.itinerary_id != self.pk:
+                            record_audit(
+                                booking,
+                                "updated",
+                                {
+                                    "itinerary": {
+                                        "from": booking.itinerary_id,
+                                        "to": self.pk,
+                                    }
+                                },
+                            )
    
 
     def __str__(self):

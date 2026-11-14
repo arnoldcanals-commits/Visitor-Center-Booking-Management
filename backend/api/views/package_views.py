@@ -1,16 +1,17 @@
 from rest_framework import viewsets
 from rest_framework import generics
 from rest_framework.parsers import MultiPartParser, FormParser
+from ..audit import AuditActorMixin
 from ..models import TourPackage, TourPackageImage
 from ..serializers import TourPackageSerializer, TourPackageImageSerializer, PackageDetailSerializer
 from rest_framework.permissions import AllowAny
 
-class TourPackageViewSet(viewsets.ModelViewSet):
+class TourPackageViewSet(AuditActorMixin, viewsets.ModelViewSet):
     queryset = TourPackage.objects.all()
     serializer_class = TourPackageSerializer
     permission_classes = [AllowAny]
 
-class TourPackageImageViewSet(viewsets.ModelViewSet):
+class TourPackageImageViewSet(AuditActorMixin, viewsets.ModelViewSet):
     queryset = TourPackageImage.objects.all()
     serializer_class = TourPackageImageSerializer
     parser_classes = (MultiPartParser, FormParser,)  # To handle image uploads

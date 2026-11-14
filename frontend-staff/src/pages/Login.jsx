@@ -3,6 +3,7 @@ import React, { useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import Form from "../components/Form";
 import { AuthContext } from "../contexts/AuthContext";
+import { showGlobalMessage } from "../utils/globalMessages";
 
 function Login() {
   const { login } = useContext(AuthContext);
@@ -19,12 +20,12 @@ function Login() {
       if (tokenData?.is_admin) {
         navigate("/dashboard", { replace: true });
       } else {
-        alert("Only admin users can log in.");
+        showGlobalMessage("Only admin users can log in.", "error");
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
       }
     } else {
-      alert("Login failed. Check your credentials.");
+      showGlobalMessage("Login failed. Check your credentials.", "error");
     }
   };
 

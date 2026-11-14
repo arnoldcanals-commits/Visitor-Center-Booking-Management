@@ -88,7 +88,9 @@ class Booking(BaseModel):
     def auto_update_status(self):
         now = timezone.now()
 
-        if (
+        if self.check_in and self.status == "pending" and now >= self.check_in:
+            self.status = "rejected"
+        elif (
             self.check_in
             and self.status == "approved"
             and now >= self.check_in

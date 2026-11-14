@@ -232,8 +232,31 @@ class NotificationAdmin(admin.ModelAdmin):
 
 @admin.register(AuditLog)
 class AuditLogAdmin(admin.ModelAdmin):
-    list_display = ("action", "user", "content_type", "object_id", "created_at")
-    autocomplete_fields = ("user",)
+    list_display = ("created_at", "user", "action", "content_type", "object_id")
+    list_filter = ("action", "content_type")
+    search_fields = ("user__username", "user__email", "action", "object_id")
+    readonly_fields = (
+        "user",
+        "content_type",
+        "object_id",
+        "content_object",
+        "action",
+        "changes",
+        "created_at",
+        "updated_at",
+    )
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return request.user.is_active and request.user.is_staff
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(Review)

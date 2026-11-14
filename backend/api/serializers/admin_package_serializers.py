@@ -63,17 +63,12 @@ class TourPackageSerializer(serializers.ModelSerializer):
         if not files:
             return
         has_main = package.images.filter(is_main=True).exists()
-        TourPackageImage.objects.bulk_create(
-            [
-                TourPackageImage(
-                    package=package,
-                    image=f,
-                    # first upload becomes the cover if the package has none yet
-                    is_main=(not has_main and i == 0),
-                )
-                for i, f in enumerate(files)
-            ]
-        )
+        for index, image_file in enumerate(files):
+            TourPackageImage.objects.create(
+                package=package,
+                image=image_file,
+                is_main=not has_main and index == 0,
+            )
 
     @transaction.atomic
     def create(self, validated_data):
@@ -155,17 +150,12 @@ class AdminTourPackageSerializer(serializers.ModelSerializer):
         if not files:
             return
         has_main = package.images.filter(is_main=True).exists()
-        TourPackageImage.objects.bulk_create(
-            [
-                TourPackageImage(
-                    package=package,
-                    image=f,
-                    # first upload becomes the cover if the package has none yet
-                    is_main=(not has_main and i == 0),
-                )
-                for i, f in enumerate(files)
-            ]
-        )
+        for index, image_file in enumerate(files):
+            TourPackageImage.objects.create(
+                package=package,
+                image=image_file,
+                is_main=not has_main and index == 0,
+            )
 
     @transaction.atomic
     def create(self, validated_data):

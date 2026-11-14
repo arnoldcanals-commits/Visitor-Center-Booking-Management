@@ -10,6 +10,7 @@ from rest_framework.permissions import BasePermission, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from api.audit import record_audit
 from ..serializers import (
     DeclineTripInputSerializer,
     DelayInputSerializer,
@@ -310,7 +311,16 @@ class AlightAtStopView(DriverAPIView):
                 scheduled |= Q(alighting_stop__isnull=True)
             here = trip.passengers.filter(scheduled)
 
+            changed_passengers = list(
+                here.filter(status="checked_in").select_for_update()
+            )
             completed = here.filter(status="checked_in").update(status="completed")
+            for passenger in changed_passengers:
+                record_audit(
+                    passenger,
+                    "status_changed",
+                    {"status": {"from": "checked_in", "to": "completed"}},
+                )
             still_reserved = here.filter(status="reserved").count()
 
         return trip_response(

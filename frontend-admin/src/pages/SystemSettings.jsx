@@ -19,7 +19,13 @@ import {
 import EditableField from "../components/SystemSettings/EditableField";
 import AccentBadge from "../components/AccentBadge";
 import HeroManager from "../components/SystemSettings/HeroManager";
+import {
+  formatAuditAction,
+  formatAuditChanges,
+  getAuditActor,
+} from "../components/SystemSettings/auditFormatting";
 const LONG_PRESS_MS = 500;
+const EMPTY_AUDIT_LOGS = [];
 
 export default function SystemSettings() {
   const { adminData, updateItem, createItem, deleteItem, loading } =
@@ -48,7 +54,7 @@ export default function SystemSettings() {
   const faqs = adminData?.faqs || [];
   const systemSettings = adminData?.system_settings || [];
   const infoEntries = adminData?.information || [];
-  const auditLogs = adminData?.audit_logs || [];
+  const auditLogs = adminData?.audit_logs || EMPTY_AUDIT_LOGS;
 
   // --- Helpers ---
 
@@ -74,10 +80,20 @@ export default function SystemSettings() {
   }, [infoEntries, searchTerm]);
 
   const filteredAudits = useMemo(() => {
-    return auditLogs.filter(log =>
-      log.action?.toLowerCase().includes(searchAudit.toLowerCase()) ||
-      log.content_type?.toLowerCase().includes(searchAudit.toLowerCase()) ||
-      JSON.stringify(log.changes || "").toLowerCase().includes(searchAudit.toLowerCase())
+    const query = searchAudit.trim().toLowerCase();
+    return auditLogs.filter((log) =>
+      [
+        getAuditActor(log),
+        log.action,
+        log.content_type_name,
+        log.content_type,
+        log.object_id,
+        formatAuditChanges(log.changes),
+        JSON.stringify(log.changes || {}),
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query)
     );
   }, [auditLogs, searchAudit]);
 
@@ -348,20 +364,32 @@ export default function SystemSettings() {
               <table className="w-full text-left font-mono text-[11px]">
                 <thead className="bg-slate-50 dark:bg-slate-800/60 border-b dark:border-slate-700 text-slate-400 dark:text-slate-500">
                   <tr className="uppercase font-black">
+                    <th className="px-10 py-4">Who</th>
                     <th className="px-10 py-4">Action</th>
                     <th className="px-10 py-4">Target</th>
-                    <th className="px-10 py-4">Meta</th>
+                    <th className="px-10 py-4">What changed</th>
                     <th className="px-10 py-4 text-right">Time</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
                   {filteredAudits.length > 0 ? paginate(filteredAudits).map((log) => (
                     <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-white/5">
+                      <td className="px-10 py-4 text-slate-700 dark:text-slate-300">{getAuditActor(log)}</td>
                       <td className="px-10 py-4">
-                        <span className={`px-2 py-1 rounded uppercase font-black text-[9px] ${log.action === "created" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"}`}>{log.action}</span>
+                        <span className={`px-2 py-1 rounded uppercase font-black text-[9px] ${log.action === "created" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400" : "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"}`}>{formatAuditAction(log.action)}</span>
                       </td>
-                      <td className="px-10 py-4 font-bold uppercase text-slate-700 dark:text-slate-300">{log.content_type} <span className="text-slate-300 dark:text-slate-600">#{log.object_id}</span></td>
-                      <td className="px-10 py-4 text-slate-500 dark:text-slate-400 max-w-xs truncate">{log.changes ? JSON.stringify(log.changes) : "---"}</td>
+                      <td className="px-10 py-4 font-bold uppercase text-slate-700 dark:text-slate-300">{log.content_type_name || log.content_type} <span className="text-slate-300 dark:text-slate-600">#{log.object_id}</span></td>
+                      <td className="px-10 py-4 text-slate-500 dark:text-slate-400 max-w-xl">
+                        <p className="break-words">{formatAuditChanges(log.changes)}</p>
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-[10px] text-slate-400 dark:text-slate-500">
+                            Full audit data
+                          </summary>
+                          <pre className="mt-2 whitespace-pre-wrap break-words text-[10px]">
+                            {JSON.stringify(log.changes, null, 2)}
+                          </pre>
+                        </details>
+                      </td>
                       <td className="px-10 py-4 text-right text-slate-400 dark:text-slate-500">{new Date(log.created_at).toLocaleString()}</td>
                     </tr>
                   )) : <NoDataMessage title="No Logs Found" />}

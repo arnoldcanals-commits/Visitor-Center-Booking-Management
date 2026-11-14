@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import api from '../api'; // Your axios instance
 import { AuthContext } from '../contexts/AuthContext'; // Pull in your auth context
+import { showGlobalMessage } from '../utils/globalMessages';
 import { Link } from 'react-router-dom';
 import {
   Car, Search, LayoutGrid, List, ChevronLeft, ChevronRight, SlidersHorizontal, Trash2, SquarePen, MapPinned
@@ -142,7 +143,7 @@ export default function VehicleManager() {
       setIsModalOpen(false);
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to save record. Check constraints.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to save record. Check constraints.', "error", err);
     }
   };
 
@@ -155,7 +156,7 @@ export default function VehicleManager() {
       await api.delete(`${VEHICLE_ENDPOINT}${id}/`, authHeader());
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete item');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to delete item', "error", err);
     }
   };
 

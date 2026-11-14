@@ -8,16 +8,13 @@ import {
 import BillItemsTable from "./BillItemsTable";
 import BillFeesModal from "./BillFeesModal";
 import BillPdfPreviewModal from "./BillPdfPreviewModal";
-import BackButton from "../Back";
 export default function BillInfoModal({ bill, onClose }) {
   const {
     billAction,
     canVerify,
     canReject,
-    deleteFee,
   } = useContext(AdminBillingContext);
 
-  const [activeFeeItem, setActiveFeeItem] = useState(null);
   const [showFeeModal, setShowFeeModal] = useState(false);
   const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
@@ -30,31 +27,17 @@ export default function BillInfoModal({ bill, onClose }) {
   const handleAction = async (action) => {
     setActionLoading(action);
     const payload = action === "mark-paid" ? {} : undefined;
-    const success = await billAction(bill.id, action, payload);
-    setActionLoading(null);
-    if (success) onClose();
-  };
-
-  const handleAddFee = () => {
-    setActiveFeeItem(null);
-    setShowFeeModal(true);
-  };
-
-  const handleEditFee = (feeItem) => {
-    setActiveFeeItem(feeItem);
-    setShowFeeModal(true);
-  };
-
-  const handleDeleteFee = async (feeItem) => {
-    if (window.confirm("Remove this fee from the bill?")) {
-      await deleteFee(feeItem.id);
+    try {
+      const success = await billAction(bill.id, action, payload);
+      if (success) onClose();
+    } finally {
+      setActionLoading(null);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-gray-100">
-        <BackButton />
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
           <div className="flex items-center gap-3">
@@ -85,7 +68,7 @@ export default function BillInfoModal({ bill, onClose }) {
             </div>
             <div className="text-right">
               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-400">Grand Total</span>
-              <div className="text-2xl font-black text-gray-900">₱{bill.total_amount.toLocaleString()}</div>
+              <div className="text-2xl font-black text-gray-900">₱{formatCurrency(bill.total_amount)}</div>
             </div>
           </div>
 
@@ -103,7 +86,7 @@ export default function BillInfoModal({ bill, onClose }) {
               <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Breakdown</h3>
               {canIssueBill && (
                 <button
-                  onClick={handleAddFee}
+                  onClick={() => setShowFeeModal(true)}
                   className="flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 transition-colors"
                 >
                   <Plus size={14} /> Add Extra Fee
@@ -114,14 +97,12 @@ export default function BillInfoModal({ bill, onClose }) {
             <div className="rounded-xl border border-gray-100 overflow-hidden">
               <BillItemsTable
                 bill={bill}
-                onEditFee={handleEditFee}
-                onDeleteFee={handleDeleteFee}
               />
             </div>
 
             <div className="mt-3 p-3 bg-gray-50 rounded-lg flex justify-between items-center text-sm">
                <span className="text-gray-500">Base Amount</span>
-               <span className="font-medium text-gray-700">₱{bill.base_amount.toLocaleString()}</span>
+               <span className="font-medium text-gray-700">₱{formatCurrency(bill.base_amount)}</span>
             </div>
           </div>
 
@@ -201,7 +182,6 @@ export default function BillInfoModal({ bill, onClose }) {
         {showFeeModal && (
           <BillFeesModal
             bill={bill}
-            feeItem={activeFeeItem}
             onClose={() => setShowFeeModal(false)}
           />
         )}
@@ -214,6 +194,13 @@ export default function BillInfoModal({ bill, onClose }) {
       </div>
     </div>
   );
+}
+
+function formatCurrency(value) {
+  const amount = Number(value);
+  return Number.isFinite(amount)
+    ? amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "0.00";
 }
 
 // --- Helper Components ---

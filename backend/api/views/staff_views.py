@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 
+from ..audit import AuditActorMixin
 from ..models import (
     User,
     Booking,
@@ -64,7 +65,7 @@ class StaffTokenRefreshView(TokenRefreshView):
 # ============================================================
 # BASE Staff GENERIC VIEW MIXIN
 # ============================================================
-class StaffRequestMixin:
+class StaffRequestMixin(AuditActorMixin):
     def get_serializer_context(self):
         return {"request": self.request}
 
@@ -164,7 +165,7 @@ class StaffUserUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffUserDeleteView(generics.DestroyAPIView):
+class StaffUserDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = User.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -190,7 +191,7 @@ class StaffBookingUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffBookingDeleteView(generics.DestroyAPIView):
+class StaffBookingDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = Booking.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -216,7 +217,7 @@ class StaffGuestUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffGuestDeleteView(generics.DestroyAPIView):
+class StaffGuestDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = Guest.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -242,7 +243,7 @@ class StaffTourPackageUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffTourPackageDeleteView(generics.DestroyAPIView):
+class StaffTourPackageDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = TourPackage.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -268,7 +269,7 @@ class StaffTourEventUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffTourEventDeleteView(generics.DestroyAPIView):
+class StaffTourEventDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = TourEvent.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -294,7 +295,7 @@ class StaffQRCodeUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffQRCodeDeleteView(generics.DestroyAPIView):
+class StaffQRCodeDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = QRCode.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -321,7 +322,7 @@ class StaffPermitUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffPermitDeleteView(generics.DestroyAPIView):
+class StaffPermitDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = Permit.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -347,7 +348,7 @@ class StaffPermitTemplateUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffPermitTemplateDeleteView(generics.DestroyAPIView):
+class StaffPermitTemplateDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = PermitTemplate.objects.all()
     permission_classes = [IsAuthenticated]
 
@@ -373,7 +374,7 @@ class StaffReportUpdateView(StaffRequestMixin, generics.UpdateAPIView):
     permission_classes = [IsAuthenticated]
 
 
-class StaffReportDeleteView(generics.DestroyAPIView):
+class StaffReportDeleteView(StaffRequestMixin, generics.DestroyAPIView):
     queryset = Report.objects.all()
     permission_classes = [IsAuthenticated]
 

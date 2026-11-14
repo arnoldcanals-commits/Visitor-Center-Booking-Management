@@ -3,12 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AdminBillingContext } from "../contexts/AdminBillingContext";
 import { 
   Search, 
-  Filter, 
-  Archive, 
   Eye, 
   ChevronLeft, 
   ChevronRight, 
-  Calendar,
   Inbox,
   LayoutGrid
 } from "lucide-react";
@@ -16,7 +13,6 @@ import AccentBadge from "../components/AccentBadge"
 import BillInfoModal from "../components/billing/BillInfoModal";
 
 import FeesManager from "./FeesManager";
-import { AuthContext } from "../contexts/AuthContext";
 export default function Billing() {
   const { bills } = useContext(AdminBillingContext);
   const { refNumber } = useParams(); // Assumes route is /billing/:refNumber?
@@ -25,7 +21,6 @@ export default function Billing() {
   // --- States ---
   const [activeTab, setActiveTab] = useState("bills");
   const [activeBill, setActiveBill] = useState(null);
-  const [showArchived, setShowArchived] = useState(false);
   
   // Filtering States
   const [search, setSearch] = useState("");
@@ -55,26 +50,27 @@ export default function Billing() {
       // 1. Sort by newest (assuming created_at exists, otherwise id)
       .sort((a, b) => new Date(b.created_at || b.id) - new Date(a.created_at || a.id));
 
-    // 2. Archive Toggle
-    filtered = filtered.filter(b => !!b.is_archived === showArchived);
-
-    // 3. Search Filter
+    // 2. Search Filter
     if (search) {
       filtered = filtered.filter(b => 
-        b.reference_no.toLowerCase().includes(search.toLowerCase())
+        String(b.reference_no ?? "").toLowerCase().includes(search.toLowerCase())
       );
     }
 
-    // 4. Status Filter
+    // 3. Status Filter
     if (statusFilter !== "all") {
-      filtered = filtered.filter(b => b.status === statusFilter);
+      filtered = filtered.filter(b => b.status?.toLowerCase() === statusFilter);
     }
 
-    // 5. Date/Month/Year Filter
+    // 4. Date/Month/Year Filter
     if (dateFilter.type !== "all" && dateFilter.value) {
       filtered = filtered.filter(b => {
         const d = new Date(b.created_at);
-        if (dateFilter.type === "day") return d.toISOString().split('T')[0] === dateFilter.value;
+        if (Number.isNaN(d.getTime())) return false;
+        if (dateFilter.type === "day") {
+          const localDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          return localDate === dateFilter.value;
+        }
         if (dateFilter.type === "month") return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === dateFilter.value;
         if (dateFilter.type === "year") return d.getFullYear().toString() === dateFilter.value;
         return true;
@@ -82,7 +78,7 @@ export default function Billing() {
     }
 
     return filtered;
-  }, [bills, search, statusFilter, dateFilter, showArchived]);
+  }, [bills, search, statusFilter, dateFilter]);
 
   // Pagination Calculations
   const totalPages = Math.ceil(processedBills.length / itemsPerPage);
@@ -98,16 +94,6 @@ export default function Billing() {
           <div>
             <AccentBadge icon={LayoutGrid}>Billing Management</AccentBadge>
           </div>
-          
-          <button 
-            onClick={() => { setShowArchived(!showArchived); setCurrentPage(1); }}
-            className={` flex items-center gap-2 px-4 py-2 rounded-lg border transition-all ${
-              showArchived ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
-            }`}
-          >
-            <Archive size={18} />
-            {showArchived ? "Viewing Archived" : "View Archived"}
-          </button>
         </header>
 
         {/* ───────── Tabs ───────── */}
@@ -136,25 +122,37 @@ export default function Billing() {
                   placeholder="Search Reference No..."
                   className="dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setCurrentPage(1);
+                  }}
                 />
               </div>
               
               <select 
                 className="w-full py-2 border dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 border-gray-200 rounded-lg outline-none"
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
               >
                 <option value="all">All Statuses</option>
+                <option value="draft">Draft</option>
+                <option value="issued">Issued</option>
                 <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="overdue">Overdue</option>
+                <option value="verified">Verified</option>
+                <option value="rejected">Rejected</option>
               </select>
               
               <div className="flex gap-2">
                 <select 
                   className="dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 px-6 py-2 border border-gray-200 rounded-lg outline-none text-xs appearance-none"
-                  onChange={(e) => setDateFilter({ ...dateFilter, type: e.target.value })}
+                  value={dateFilter.type}
+                  onChange={(e) => {
+                    setDateFilter({ type: e.target.value, value: "" });
+                    setCurrentPage(1);
+                  }}
                 >
                   <option value="all">No Date Filter</option>
                   <option value="day">Day</option>
@@ -164,8 +162,12 @@ export default function Billing() {
                 <input 
                   type={dateFilter.type === "year" ? "number" : dateFilter.type === "month" ? "month" : "date"}
                   disabled={dateFilter.type === "all"}
+                  value={dateFilter.value}
                   className="dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800 px-2 py-2 border border-gray-200 rounded-lg outline-none disabled:bg-gray-50"
-                  onChange={(e) => setDateFilter({ ...dateFilter, value: e.target.value })}
+                  onChange={(e) => {
+                    setDateFilter({ ...dateFilter, value: e.target.value });
+                    setCurrentPage(1);
+                  }}
                 />
               </div>
 
@@ -173,7 +175,10 @@ export default function Billing() {
                 <span>Show</span>
                 <select 
                   value={itemsPerPage} 
-                  onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
                   className="border rounded px-6 py-1 dark:bg-gray-700 dark:text-gray-50 dark:border-gray-800"
                 >
                   <option value={5}>5</option>
@@ -234,7 +239,7 @@ export default function Billing() {
             {/* ───────── Pagination ───────── */}
             <div className="dark:bg-gray-800 dark:border-gray-700 flex items-center justify-between bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
               <p className="text-sm text-gray-500 dark:text-gray-50">
-                Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, processedBills.length)}</span> of <span className="font-medium">{processedBills.length}</span> results
+                Showing <span className="font-medium">{processedBills.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</span> to <span className="font-medium">{Math.min(currentPage * itemsPerPage, processedBills.length)}</span> of <span className="font-medium">{processedBills.length}</span> results
               </p>
               <div className="flex gap-2">
                 <button 
@@ -278,11 +283,11 @@ function StatusBadge({ status }) {
     default: "bg-gray-100 text-gray-700 border-gray-200"
   };
   
-  const style = styles[status.toLowerCase()] || styles.default;
+  const style = styles[status?.toLowerCase()] || styles.default;
   
   return (
     <span className={`px-2.5 py-1 text-xs font-bold rounded-full border uppercase tracking-wider ${style}`}>
-      {status}
+      {status || "Unknown"}
     </span>
   );
 }

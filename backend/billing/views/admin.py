@@ -87,12 +87,24 @@ class AdminBillUpdateView(AdminRequestMixin, generics.UpdateAPIView):
 # BILL ITEMS
 # =====================================================
 class AdminBillItemListCreateView(AdminRequestMixin, generics.ListCreateAPIView):
-    queryset = BillItem.objects.select_related("bill", "guest", "fee_type")
+    queryset = BillItem.objects.select_related("bill", "booking_guest__guest", "fee_type")
     serializer_class = AdminBillItemSerializer
     permission_classes = [IsAdminUser]
 
 
 class AdminBillItemDetailView(AdminRequestMixin, generics.RetrieveUpdateDestroyAPIView):
-    queryset = BillItem.objects.select_related("bill", "guest", "fee_type")
+    queryset = BillItem.objects.select_related("bill", "booking_guest__guest", "fee_type")
     serializer_class = AdminBillItemSerializer
     permission_classes = [IsAdminUser]
+
+    def perform_update(self, serializer):
+        previous_bill = serializer.instance.bill
+        item = serializer.save()
+        previous_bill.recalculate_total()
+        if item.bill_id != previous_bill.id:
+            item.bill.recalculate_total()
+
+    def perform_destroy(self, instance):
+        bill = instance.bill
+        instance.delete()
+        bill.recalculate_total()

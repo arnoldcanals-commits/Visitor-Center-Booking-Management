@@ -1,48 +1,29 @@
 // src/components/billing/BillFeesModal.jsx
-import { useState, useContext, useEffect } from "react";
-import { AdminBillingContext } from "../../contexts/AdminBillingContext";
+import { useState, useContext } from "react";
+import api from "../../api";
+import { AdminDataContext } from "../../contexts/AdminDataContext";
 
 export default function BillFeesModal({ bill, feeItem = null, onClose }) {
-  const { createFee, updateFee, deleteFee, fees } = useContext(AdminBillingContext);
+  const { adminData, reload } = useContext(AdminDataContext);
+  const fees = adminData?.fee_types ?? [];
 
   // ----------------------------
   // State
   // ----------------------------
-  const [feeTypeId, setFeeTypeId] = useState(feeItem?.fee_type?.id?.toString() || "");
-  const [guestId, setGuestId] = useState(feeItem?.guest?.id?.toString() || "");
+  const [feeTypeId, setFeeTypeId] = useState(
+    String(feeItem?.fee_type?.id ?? feeItem?.fee_type ?? "")
+  );
+  const [bookingGuestId, setBookingGuestId] = useState(
+    String(feeItem?.booking_guest ?? "")
+  );
   const [description, setDescription] = useState(feeItem?.description || "");
   const [baseAmount, setBaseAmount] = useState(feeItem?.base_amount || 0);
   const [discount, setDiscount] = useState(feeItem?.discount_amount || 0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const finalAmount = Math.max(baseAmount - discount, 0);
-
-  // ----------------------------
-  // Autofill description & base_amount when FeeType changes
-  // ----------------------------
-  useEffect(() => {
-    if (feeTypeId) {
-      const selected = fees.find((f) => String(f.id) === String(feeTypeId));
-      if (selected) {
-        setDescription(selected.name);
-        setBaseAmount(Number(selected.default_amount));
-        setDiscount(0);
-      }
-    } else if (!feeItem) {
-      // Reset for custom fee
-      setDescription("");
-      setBaseAmount(0);
-      setDiscount(0);
-    }
-  }, [feeTypeId, fees, feeItem]);
-
-  // ----------------------------
-  // Initialize FeeType when editing and fees load asynchronously
-  // ----------------------------
-  useEffect(() => {
-    if (feeItem?.fee_type && fees.length > 0) {
-      setFeeTypeId(String(feeItem.fee_type.id));
-    }
-  }, [feeItem, fees]);
+  const bookingGuests = bill.booking_guests ?? [];
 
   // ----------------------------
   // Handlers
@@ -52,26 +33,44 @@ export default function BillFeesModal({ bill, feeItem = null, onClose }) {
       bill: bill.id,
       item_type: "fee",
       fee_type: feeTypeId || null,
-      guest: guestId || null,
+      booking_guest: bookingGuestId || null,
       description,
-      base_amount: baseAmount,
-      discount_amount: discount,
+      base_amount: Number(baseAmount),
+      discount_amount: Number(discount),
     };
 
-    let success = false;
-    if (feeItem) {
-      success = await updateFee(feeItem.id, payload);
-    } else {
-      success = await createFee(payload);
+    setSaving(true);
+    setError("");
+    try {
+      if (feeItem) {
+        await api.put(`api/site_admin/bill-items/${feeItem.id}/`, payload);
+      } else {
+        await api.post("api/site_admin/bill-items/", payload);
+      }
+      await reload();
+      onClose();
+    } catch (err) {
+      console.error("Failed to save bill fee:", err.response?.data || err);
+      setError(err.response?.data?.detail || "Failed to save fee.");
+    } finally {
+      setSaving(false);
     }
-
-    if (success) onClose();
   };
 
   const handleDelete = async () => {
-    if (feeItem && window.confirm("Remove this fee from the bill?")) {
-      await deleteFee(feeItem.id);
+    if (!feeItem || !window.confirm("Remove this fee from the bill?")) return;
+
+    setSaving(true);
+    setError("");
+    try {
+      await api.delete(`api/site_admin/bill-items/${feeItem.id}/`);
+      await reload();
       onClose();
+    } catch (err) {
+      console.error("Failed to delete bill fee:", err.response?.data || err);
+      setError(err.response?.data?.detail || "Failed to remove fee.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -105,7 +104,20 @@ export default function BillFeesModal({ bill, feeItem = null, onClose }) {
           ) : (
             <select
               value={feeTypeId}
-              onChange={(e) => setFeeTypeId(e.target.value)}
+              onChange={(e) => {
+                const nextFeeTypeId = e.target.value;
+                setFeeTypeId(nextFeeTypeId);
+                const selected = fees.find((f) => String(f.id) === nextFeeTypeId);
+                if (selected) {
+                  setDescription(selected.name);
+                  setBaseAmount(Number(selected.default_amount));
+                  setDiscount(0);
+                } else if (!feeItem) {
+                  setDescription("");
+                  setBaseAmount(0);
+                  setDiscount(0);
+                }
+              }}
               className="border p-2 rounded"
             >
               <option value="">Custom / No Type</option>
@@ -117,17 +129,16 @@ export default function BillFeesModal({ bill, feeItem = null, onClose }) {
             </select>
           )}
 
-          {/* Guest */}
           <label className="text-sm font-medium">Attach to Guest (optional)</label>
           <select
-            value={guestId}
-            onChange={(e) => setGuestId(e.target.value)}
+            value={bookingGuestId}
+            onChange={(e) => setBookingGuestId(e.target.value)}
             className="border p-2 rounded"
           >
-            <option value="">None (General Fee)</option>
-            {bill.booking?.guests?.map((g) => (
-              <option key={g.id} value={String(g.id)}>
-                {g.full_name}
+            <option value="">None (Bill-wide fee)</option>
+            {bookingGuests.map((guest) => (
+              <option key={guest.id} value={String(guest.id)}>
+                {guest.full_name}
               </option>
             ))}
           </select>
@@ -164,12 +175,19 @@ export default function BillFeesModal({ bill, feeItem = null, onClose }) {
           {/* Final Amount */}
           <div className="text-right font-semibold">Final: ₱{finalAmount}</div>
 
+          {error && (
+            <p role="alert" className="text-sm text-red-600">
+              {error}
+            </p>
+          )}
+
           {/* Actions */}
           <div className="flex justify-between gap-2 mt-4">
             {feeItem && (
               <button
                 onClick={handleDelete}
                 className="bg-red-600 text-white px-3 py-1 rounded w-1/3"
+                disabled={saving}
               >
                 Delete
               </button>
@@ -177,8 +195,9 @@ export default function BillFeesModal({ bill, feeItem = null, onClose }) {
             <button
               onClick={handleSave}
               className="bg-blue-600 text-white px-3 py-1 rounded flex-1"
+              disabled={saving}
             >
-              Save
+              {saving ? "Saving..." : "Save"}
             </button>
           </div>
         </div>

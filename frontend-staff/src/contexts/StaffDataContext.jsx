@@ -1,5 +1,6 @@
 import React, { createContext, useEffect, useState, useContext, useRef } from "react";
 import api from "../api";
+import { showGlobalMessage } from "../utils/globalMessages";
 import { AuthContext } from "./AuthContext";
 
 export const StaffDataContext = createContext();
@@ -95,6 +96,11 @@ export const StaffDataProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error(`Failed to create ${model}:`, error);
+      showGlobalMessage(
+        error.response?.data?.detail || `Failed to create ${model}. Please try again.`,
+        "error",
+        error
+      );
       return false;
     }
   };

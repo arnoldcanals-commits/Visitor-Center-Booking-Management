@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import api from '../api';
 import { AuthContext } from '../contexts/AuthContext';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { showGlobalMessage } from '../utils/globalMessages';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapPin, Plus, Trash2, SquarePen, Search, Archive, ArchiveRestore, ChevronDown } from "lucide-react";
@@ -136,7 +137,7 @@ export default function LocationManager() {
       setIsModalOpen(false);
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to save location. Check constraints.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to save location. Check constraints.', "error", err);
     }
   };
 
@@ -146,7 +147,7 @@ export default function LocationManager() {
       await api.delete(`${LOCATION_ENDPOINT}${id}/`, authHeader());
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to delete location');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to delete location', "error", err);
     }
   };
 

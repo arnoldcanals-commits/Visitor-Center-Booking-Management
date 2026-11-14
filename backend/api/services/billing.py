@@ -1,9 +1,8 @@
 from decimal import Decimal
 from django.utils import timezone
-from django.template.loader import render_to_string
 from django.core.files.base import ContentFile
-from weasyprint import HTML
-from ..models import Bill, BillItem, FeeType, Booking, Guest, BillTemplate, AuditLog
+from ..audit import audit_actor
+from ..models import Bill, BillItem, FeeType, Booking, Guest, BillTemplate
 
 # =====================================================
 # Create Draft Bill for a Booking
@@ -70,21 +69,10 @@ def recalculate_bill_totals(bill: Bill):
 # Generate PDF from Template
 # =====================================================
 def generate_bill_pdf(bill: Bill):
-    if not bill.template:
-        raise ValueError("Bill has no template assigned.")
+    from billing.services.bill_pdf import generate_bill_pdf as render_bill_pdf
 
-    context = {
-        "bill": bill,
-        "items": bill.items.all(),
-        "date": timezone.now(),
-    }
-
-    html_string = render_to_string("billing/bill_template.html", context)
-    html = HTML(string=html_string)
-    pdf_file = html.write_pdf()
-
-    bill.bill_document.save(f"bill_{bill.id}.pdf", ContentFile(pdf_file))
-    bill.save()
+    pdf_file = render_bill_pdf(bill)
+    bill.bill_document.save(f"bill_{bill.id}.pdf", ContentFile(pdf_file), save=True)
     return bill.bill_document
 
 # =====================================================
@@ -92,14 +80,8 @@ def generate_bill_pdf(bill: Bill):
 # =====================================================
 def verify_payment(bill: Bill, staff_user):
     bill.status = "verified"
-    bill.save()
-    AuditLog.objects.create(
-        user=staff_user,
-        content_type=bill._meta.get_field('id').model._meta.model_name,
-        object_id=bill.id,
-        action="Payment Verified",
-        message=f"Bill {bill.id} verified by {staff_user.username}"
-    )
+    with audit_actor(staff_user):
+        bill.save()
     return bill
 
 # =====================================================
@@ -107,12 +89,6 @@ def verify_payment(bill: Bill, staff_user):
 # =====================================================
 def reject_payment(bill: Bill, staff_user, reason=""):
     bill.status = "rejected"
-    bill.save()
-    AuditLog.objects.create(
-        user=staff_user,
-        content_type=bill._meta.get_field('id').model._meta.model_name,
-        object_id=bill.id,
-        action="Payment Rejected",
-        message=f"Bill {bill.id} rejected by {staff_user.username}. Reason: {reason}"
-    )
+    with audit_actor(staff_user):
+        bill.save()
     return bill

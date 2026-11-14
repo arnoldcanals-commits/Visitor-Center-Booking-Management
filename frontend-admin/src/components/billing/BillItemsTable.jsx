@@ -1,11 +1,12 @@
 import { useContext } from "react";
 import api from "../../api";
 import { AdminDataContext } from "../../contexts/AdminDataContext";
+import { showGlobalMessage } from "../../utils/globalMessages";
 
 export default function BillItemsTable({ bill }) {
   const { adminData, reload } = useContext(AdminDataContext);
 
-  const items = adminData.bill_items.filter(
+  const items = (adminData?.bill_items ?? []).filter(
     (i) => i.bill === bill.id
   );
 
@@ -16,12 +17,12 @@ export default function BillItemsTable({ bill }) {
 
     try {
       await api.delete(
-        `api/site_admin/bill_items/${itemId}/delete/`
+        `api/site_admin/bill-items/${itemId}/`
       );
       await reload();
     } catch (err) {
       console.error(err);
-      alert("Failed to remove bill item.");
+      showGlobalMessage("Failed to remove bill item.", "error", err);
     }
   };
 

@@ -8,6 +8,7 @@ import React, {
   useRef,
 } from "react";
 import api from "../api";
+import { showGlobalMessage } from "../utils/globalMessages";
 import { AuthContext } from "./AuthContext";
 
 export const AdminDataContext = createContext();
@@ -124,6 +125,11 @@ export const AdminDataProvider = ({ children }) => {
       return true;
     } catch (error) {
       console.error(`Failed to create ${model}:`, error);
+      showGlobalMessage(
+        error.response?.data?.detail || `Failed to create ${model}. Please try again.`,
+        "error",
+        error
+      );
       return false;
     }
   };

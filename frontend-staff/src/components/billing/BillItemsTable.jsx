@@ -1,6 +1,7 @@
 import { useContext } from "react";
 import api from "../../api";
 import { StaffDataContext } from "../../contexts/StaffDataContext";
+import { showGlobalMessage } from "../../utils/globalMessages";
 
 export default function BillItemsTable({ bill }) {
   const { staffData, reload } = useContext(StaffDataContext);
@@ -21,7 +22,7 @@ export default function BillItemsTable({ bill }) {
       await reload();
     } catch (err) {
       console.error(err);
-      alert("Failed to remove bill item.");
+      showGlobalMessage("Failed to remove bill item.", "error", err);
     }
   };
 

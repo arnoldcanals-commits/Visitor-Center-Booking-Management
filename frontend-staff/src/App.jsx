@@ -34,6 +34,7 @@ import DriverProfile from "./pages/driver/profile";
 
 // ================= GUARDS & CONTEXT =================
 import RoleRoute from "./components/RoleRoute";
+import GlobalMessageModal from "./components/GlobalMessageModal";
 import { AuthProvider, AuthContext } from "./contexts/AuthContext";
 import { StaffDataProvider } from "./contexts/StaffDataContext";
 import { StaffBillingProvider } from "./contexts/StaffBillingContext";
@@ -209,9 +210,12 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+        <GlobalMessageModal />
+      </>
     </AuthProvider>
   );
 }

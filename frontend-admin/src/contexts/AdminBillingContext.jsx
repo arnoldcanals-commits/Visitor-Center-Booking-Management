@@ -35,7 +35,7 @@ export const AdminBillingProvider = ({ children }) => {
   // -----------------------------
   const createFee = async (data) => {
     try {
-      await api.post("api/site_admin/fees/", data);
+      await api.post("api/site_admin/fee-types/", data);
       await reload();
       return true;
     } catch (error) {
@@ -46,7 +46,7 @@ export const AdminBillingProvider = ({ children }) => {
 
   const updateFee = async (feeId, data) => {
     try {
-      await api.put(`api/site_admin/fees/${feeId}/`, data);
+      await api.put(`api/site_admin/fee-types/${feeId}/`, data);
       await reload();
       return true;
     } catch (error) {
@@ -57,7 +57,7 @@ export const AdminBillingProvider = ({ children }) => {
 
   const deleteFee = async (feeId) => {
     try {
-      await api.delete(`api/site_admin/fees/${feeId}/`);
+      await api.delete(`api/site_admin/fee-types/${feeId}/`);
       await reload();
       return true;
     } catch (error) {

@@ -5,6 +5,7 @@ import TransportPassengerManager from '../components/transport/TransportPassenge
 import TransportReservationManager from '../components/transport/TransportReservationManager';
 import { MapPin } from "lucide-react";
 import { AuthContext } from '../contexts/AuthContext'; // Pull in your auth context
+import { showGlobalMessage } from '../utils/globalMessages';
 import VehicleManager from './Vehicle';
 import LocationManager from './Location';
 import {
@@ -247,7 +248,7 @@ export default function Transport() {
     const arrived = formData.actual_arrival_time ? new Date(formData.actual_arrival_time) : null;
 
     if (departed && arrived && arrived < departed) {
-      alert('Actual arrival time can\'t be before the actual departure time.');
+      showGlobalMessage('Actual arrival time can\'t be before the actual departure time.', "error");
       return;
     }
 
@@ -276,7 +277,7 @@ export default function Transport() {
       setIsModalOpen(false);
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to save record. Check constraints.');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to save record. Check constraints.', "error", err);
     }
   };
 
@@ -303,7 +304,7 @@ export default function Transport() {
       }, authHeader());
       fetchItems();
     } catch (err) {
-      alert(err.response?.data?.detail || 'Failed to update record');
+      showGlobalMessage(err.response?.data?.detail || 'Failed to update record', "error", err);
     }
   };
 
@@ -338,7 +339,7 @@ export default function Transport() {
       setSelectedIds([]);
       fetchItems();
     } catch (err) {
-      alert('Failed to update the selected records.');
+      showGlobalMessage('Failed to update the selected records.', "error");
     }
   };
 
