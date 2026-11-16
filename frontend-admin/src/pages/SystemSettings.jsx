@@ -15,10 +15,12 @@ import {
   ChevronLeft,
   ChevronRight,
   LayoutTemplate,
+  Newspaper,
 } from "lucide-react";
 import EditableField from "../components/SystemSettings/EditableField";
 import AccentBadge from "../components/AccentBadge";
 import HeroManager from "../components/SystemSettings/HeroManager";
+import ArticleManager from "../components/SystemSettings/ArticleManager";
 import {
   formatAuditAction,
   formatAuditChanges,
@@ -235,6 +237,7 @@ export default function SystemSettings() {
 
           { id: "branding", label: "Site Identity", icon: Globe },
           { id: "hero", label: "Dashboard Hero", icon: LayoutTemplate },
+          { id: "articles", label: "Articles", icon: Newspaper },
           { id: "faq", label: "FAQs", icon: HelpCircle },
           { id: "info", label: "Public Info", icon: Info },
           
@@ -291,6 +294,7 @@ export default function SystemSettings() {
           )}
 
         {activeTab === "hero" && <HeroManager />}
+        {activeTab === "articles" && <ArticleManager />}
           
           {activeTab === "faq" && (
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6">

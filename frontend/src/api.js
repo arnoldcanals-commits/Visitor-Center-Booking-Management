@@ -1,102 +1,102 @@
 import axios from "axios";
+import { jwtDecode } from "jwt-decode";
 import { ACCESS_TOKEN, REFRESH_TOKEN } from "./constants";
+import {
+  clearAuthTokens,
+  getAuthToken,
+  updateAccessToken,
+} from "./utils/authTokens";
 import { queueGlobalApiError } from "./utils/globalMessages";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-/* =========================================================
-   REQUEST INTERCEPTOR
-   - Attaches token only if valid
-   - Prevents "Bearer null" or "Bearer undefined"
-========================================================= */
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem(ACCESS_TOKEN);
+let refreshPromise = null;
 
-    if (token && token !== "null" && token !== "undefined") {
-      config.headers.Authorization = `Bearer ${token}`;
-    } else {
-      delete config.headers.Authorization;
+const isAuthEndpoint = (url = "") =>
+  /(?:token|login|register|forgot-password|reset-password)(?:\/|$)/i.test(url);
+
+const refreshAccessToken = () => {
+  const refresh = getAuthToken(REFRESH_TOKEN);
+  if (!refresh) return Promise.reject(new Error("No refresh token available."));
+
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${import.meta.env.VITE_API_URL}/api/token/refresh/`, { refresh })
+      .then(({ data }) => {
+        updateAccessToken(data.access);
+        return data.access;
+      })
+      .catch((error) => {
+        clearAuthTokens();
+        throw error;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
+
+api.interceptors.request.use(async (config) => {
+  if (isAuthEndpoint(config.url)) return config;
+
+  let token = getAuthToken(ACCESS_TOKEN);
+  if (token) {
+    let exp;
+    try {
+      exp = jwtDecode(token).exp;
+    } catch {
+      // Let the API reject malformed tokens through its normal 401 flow.
     }
+    if (typeof exp === "number" && exp <= Date.now() / 1000) {
+      if (getAuthToken(REFRESH_TOKEN)) {
+        try {
+          token = await refreshAccessToken();
+        } catch (error) {
+          if (window.location.pathname !== "/") window.location.href = "/";
+          throw error;
+        }
+      } else {
+        clearAuthTokens();
+        token = null;
+      }
+    }
+  }
 
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-/* =========================================================
-   REFRESH TOKEN LOGIC (Optimized)
-========================================================= */
-
-let isRefreshing = false;           // Track active refresh call
-let refreshSubscribers = [];        // Queue for requests during refresh
-
-// Notify pending requests after refresh completes
-function onRefreshed(newToken) {
-  refreshSubscribers.forEach((callback) => callback(newToken));
-  refreshSubscribers = [];
-}
+  if (token && token !== "null" && token !== "undefined") {
+    config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    delete config.headers.Authorization;
+  }
+  return config;
+});
 
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // If unauthorized & refresh token exists
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      const refreshToken = localStorage.getItem(REFRESH_TOKEN);
-
-      if (!refreshToken) {
-        // No refresh token → logout
-        localStorage.removeItem(ACCESS_TOKEN);
-        localStorage.removeItem(REFRESH_TOKEN);
-        if (window.location.pathname !== "/") window.location.href = "/";
-        return Promise.reject(error);
-      }
-
-      // Mark this request for retry
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry &&
+      !isAuthEndpoint(originalRequest.url)
+    ) {
       originalRequest._retry = true;
-
-      // If a refresh call is already running → queue request
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          refreshSubscribers.push((newToken) => {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            resolve(api(originalRequest));
-          });
-        });
-      }
-
-      // Start refresh process
-      isRefreshing = true;
-
-      try {
-        const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL}/api/token/refresh/`,
-          { refresh: refreshToken }
-        );
-
-        const newAccessToken = data.access;
-        localStorage.setItem(ACCESS_TOKEN, newAccessToken);
-
-        // Apply new token to pending requests
-        onRefreshed(newAccessToken);
-        isRefreshing = false;
-
-        // Retry original request
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        return api(originalRequest);
-
-      } catch (refreshError) {
-        // Refresh token invalid → logout everywhere
-        isRefreshing = false;
-        refreshSubscribers = [];
-        localStorage.removeItem(ACCESS_TOKEN);
-        localStorage.removeItem(REFRESH_TOKEN);
-        if (window.location.pathname !== "/") window.location.href = "/";
-        return Promise.reject(refreshError);
+      if (!getAuthToken(REFRESH_TOKEN)) {
+        clearAuthTokens();
+      } else {
+        try {
+          const newAccessToken = await refreshAccessToken();
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          clearAuthTokens();
+          if (window.location.pathname !== "/") window.location.href = "/";
+          return Promise.reject(refreshError);
+        }
       }
     }
 

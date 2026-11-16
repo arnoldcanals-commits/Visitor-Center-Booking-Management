@@ -3,13 +3,14 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { CalendarCheck } from "lucide-react";
 import AuthPanel from "../AuthPanel";
+import { getAuthToken } from "../../utils/authTokens";
 
 export default function FloatingBookButton({ packageId }) {
   const navigate = useNavigate();
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
 
   const handleClick = () => {
-    const token = localStorage.getItem("access");
+    const token = getAuthToken("access");
     if (token) {
       navigate(`/booking/book/${packageId}`);
     } else {

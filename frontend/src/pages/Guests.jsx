@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import api from "../api";
 import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
-import { ACCESS_TOKEN } from "../constants";
+import { getAuthToken } from "../utils/authTokens";
 import {
   LayoutGrid,
   List,
@@ -38,7 +38,7 @@ const accentChip = {
 };
 
 const isLoggedIn = () => {
-  const token = localStorage.getItem(ACCESS_TOKEN);
+  const token = getAuthToken("access");
   return !!token && token !== "null" && token !== "undefined";
 };
 

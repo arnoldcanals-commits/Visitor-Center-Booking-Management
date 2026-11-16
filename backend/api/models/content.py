@@ -8,6 +8,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.apps import apps
+from django.utils.text import slugify
 import uuid
 import os
 from .core import *
@@ -194,3 +195,49 @@ class DashboardImage(models.Model):
 
     def __str__(self):
         return f"{self.hero_id} / {self.order}"
+
+
+def empty_article_content():
+    return {"type": "doc", "content": [{"type": "paragraph"}]}
+
+
+class Article(BaseModel):
+    """Editorial article shown to visitors only after it is published."""
+
+    is_active = models.BooleanField(
+        default=False,
+        help_text="Publish this article on the public dashboard and article page.",
+    )
+    title = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=220, unique=True, blank=True)
+    summary = models.CharField(max_length=400)
+    content = models.JSONField(default=empty_article_content)
+    cover_image = models.ImageField(
+        upload_to="articles/",
+        blank=True,
+        null=True,
+    )
+    cover_image_alt = models.CharField(max_length=200, blank=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-published_at", "-created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)[:200] or "article"
+            candidate = base_slug
+            suffix = 2
+            while type(self).objects.filter(slug=candidate).exclude(pk=self.pk).exists():
+                ending = f"-{suffix}"
+                candidate = f"{base_slug[:220 - len(ending)]}{ending}"
+                suffix += 1
+            self.slug = candidate
+
+        if self.is_active and self.published_at is None:
+            self.published_at = timezone.now()
+
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.title

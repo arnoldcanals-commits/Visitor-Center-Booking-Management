@@ -1,3 +1,4 @@
+import json
 from datetime import timedelta
 
 from django.contrib.contenttypes.models import ContentType
@@ -10,6 +11,7 @@ from rest_framework_simplejwt.tokens import AccessToken
 from api.audit import audit_actor
 from api.models import (
     Activity,
+    Article,
     AuditLog,
     Booking,
     TourEvent,
@@ -19,6 +21,61 @@ from api.models import (
 )
 from api.tasks import reject_pending_bookings_after_start
 from billing.models import Bill
+
+
+class PublicArticleTests(TestCase):
+    def setUp(self):
+        self.published = Article.objects.create(
+            title="A published story",
+            summary="A short visitor-facing summary.",
+            is_active=True,
+        )
+        self.draft = Article.objects.create(
+            title="A draft story",
+            summary="This story is not public.",
+        )
+        self.client = APIClient()
+
+    def test_public_listing_only_returns_published_articles(self):
+        response = self.client.get(reverse("article-list"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([item["id"] for item in response.data], [self.published.id])
+
+    def test_draft_article_cannot_be_read_by_slug(self):
+        response = self.client.get(
+            reverse("article-detail", kwargs={"slug": self.draft.slug})
+        )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_admin_can_create_article_with_tiptap_json_from_multipart(self):
+        admin = User.objects.create_user(
+            email="article-admin@example.com",
+            username="article-admin",
+            password="test-password",
+        )
+        admin.is_staff = True
+        admin.save(update_fields=["is_staff"])
+        self.client.force_authenticate(user=admin)
+        content = {
+            "type": "doc",
+            "content": [{"type": "paragraph", "content": [{"type": "text", "text": "Hello"}]}],
+        }
+
+        response = self.client.post(
+            reverse("admin-article-list"),
+            {
+                "title": "Multipart article",
+                "summary": "A test article.",
+                "content": json.dumps(content),
+                "is_active": "true",
+            },
+            format="multipart",
+        )
+
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data["content"], content)
 
 
 class BookingAuditTests(TestCase):

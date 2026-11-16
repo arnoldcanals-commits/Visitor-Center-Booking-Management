@@ -1,7 +1,8 @@
-
 import { useCallback, useEffect, useState } from "react";
 import TopBar from "../components/TopBar";
+import ArticleCarousel from "../components/ArticleCarousel";
 import { setIfChanged, useLiveRefresh } from "../hooks/useLiveRefresh";
+
 const FALLBACK = {
   title: "Your stays and guests, all in one place",
   subtitle:
@@ -11,39 +12,72 @@ const FALLBACK = {
   images: [],
 };
 
-function Frame({ image, index, className = "" }) {
-  return (
-    <div
-      className={`relative overflow-hidden bg-gray-100 dark:bg-gray-800 animate-[heroReveal_0.7s_ease-out_both] motion-reduce:animate-none ${className}`}
-      style={{ animationDelay: `${index * 120}ms` }}
+const CTA_CLASS =
+  "inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-semibold text-white shadow-md shadow-slate-900/10 transition duration-200 hover:-translate-y-0.5 hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--accent)] dark:focus-visible:ring-offset-slate-900";
+
+function Cta({ label, url, onClick }) {
+  const content = (
+    <>
+      {label}
+      <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path
+          fillRule="evenodd"
+          d="M3 10a.75.75 0 0 1 .75-.75h10.69L10.22 5.03a.75.75 0 1 1 1.06-1.06l5.5 5.5a.75.75 0 0 1 0 1.06l-5.5 5.5a.75.75 0 1 1-1.06-1.06l4.22-4.22H3.75A.75.75 0 0 1 3 10Z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </>
+  );
+
+  return url ? (
+    <a href={url} className={CTA_CLASS} style={{ backgroundColor: "var(--accent)" }}>
+      {content}
+    </a>
+  ) : (
+    <button
+      type="button"
+      onClick={onClick}
+      className={CTA_CLASS}
+      style={{ backgroundColor: "var(--accent)" }}
     >
+      {content}
+    </button>
+  );
+}
+
+/* Tropical blotches that sit behind the hero image.
+   Organic border-radius shapes: lagoon, coral, palm leaf, mango. */
+function TropicalBlotches() {
+  return (
+    <div className="pointer-events-none absolute inset-0" aria-hidden="true">
+      <div className="absolute -left-5 -top-6 h-3/4 w-3/4 -rotate-6 rounded-[58%_42%_63%_37%/46%_55%_45%_54%] bg-teal-300/70 dark:bg-teal-400/25 sm:-left-8 sm:-top-8" />
+      <div className="absolute -bottom-6 -right-4 h-2/3 w-2/3 rotate-6 rounded-[42%_58%_35%_65%/60%_40%_60%_40%] bg-orange-300/80 dark:bg-orange-400/25 sm:-bottom-10 sm:-right-6" />
+      <div className="absolute -right-2 -top-8 h-24 w-24 rotate-12 rounded-[100%_0_100%_0] bg-emerald-400/70 dark:bg-emerald-500/25 sm:-right-4 sm:-top-10 sm:h-32 sm:w-32" />
+      <div className="absolute -bottom-5 left-4 h-14 w-14 rounded-full bg-amber-300 dark:bg-amber-400/30 sm:left-8 sm:h-[4.5rem] sm:w-[4.5rem]" />
+    </div>
+  );
+}
+
+function HeroImage({ image }) {
+  return (
+    <div className="relative aspect-[4/3] w-full animate-[heroReveal_0.7s_ease-out_both] overflow-hidden rounded-[2rem] bg-white shadow-xl shadow-slate-900/15 ring-1 ring-slate-900/5 motion-reduce:animate-none dark:bg-slate-800 dark:shadow-black/40 dark:ring-white/10">
       {image?.image ? (
         <img
           src={image.image}
           alt={image.alt || ""}
-          loading="lazy"
           className="h-full w-full object-cover"
         />
       ) : (
-        <div
-          className="flex h-full w-full items-center justify-center"
-          style={{
-            background:
-              "linear-gradient(135deg, color-mix(in srgb, var(--accent) 22%, transparent), color-mix(in srgb, var(--accent) 6%, transparent))",
-            color: "var(--accent)",
-          }}
-          aria-hidden="true"
-        >
+        <div className="flex h-full w-full items-center justify-center text-slate-300 dark:text-slate-600">
           <svg
-            width="28"
-            height="28"
+            className="h-14 w-14"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth="1.2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            opacity="0.7"
+            aria-hidden="true"
           >
             <rect x="3" y="4" width="18" height="16" rx="3" />
             <circle cx="9" cy="10" r="1.5" />
@@ -79,94 +113,58 @@ export default function Dashboard({ onCtaClick }) {
     return () => controller.abort();
   }, [fetchDashboard]);
 
-  useLiveRefresh(
-    () => fetchDashboard({ background: true }),
-    { enabled: data !== null }
-  );
+  useLiveRefresh(() => fetchDashboard({ background: true }), { enabled: data !== null });
 
   const hero = data;
-  const [main, topSide, bottomSide] = hero?.images ?? [];
+  const [main] = hero?.images ?? [];
   const showCta = hero?.cta_label && (hero.cta_url || onCtaClick);
 
-  const ctaClass =
-    "inline-flex items-center rounded-xl px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:brightness-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[var(--accent)] dark:focus-visible:ring-offset-gray-900";
-
   return (
-    
-    <section className="relative mb-6 overflow-hidden rounded-3xl bg-white shadow dark:bg-gray-900 dark:shadow-black/30">
-      {/* soft accent glow, sits behind everything */}
-      <TopBar/>
-      <div
-        className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full blur-3xl"
-        style={{ backgroundColor: "color-mix(in srgb, var(--accent) 18%, transparent)" }}
-        aria-hidden="true"
-      />
+    <>
+      <TopBar />
 
-      <div className="relative grid items-center gap-10 px-6 py-10 md:grid-cols-[1.1fr_1fr] md:px-12 md:py-14">
-        {/* Text */}
-        <div className="max-w-lg">
-          {hero ? (
-            <>
-              <h2 className="text-3xl font-semibold leading-tight tracking-tight text-gray-900 dark:text-gray-100 md:text-4xl">
-                {hero.title}
-              </h2>
+      <section className="mb-12 mt-6 overflow-hidden rounded-3xl border-b-[3px] border-r-[3px] border-[var(--accent)] bg-white shadow-[7px_7px_0_0_color-mix(in_srgb,var(--accent)_22%,transparent),0_30px_60px_-20px_color-mix(in_srgb,var(--accent)_30%,transparent)] dark:bg-slate-900 dark:shadow-[7px_7px_0_0_color-mix(in_srgb,var(--accent)_14%,transparent),0_24px_48px_-24px_rgba(0,0,0,0.6)]">
+        <div className="grid items-center gap-14 px-6 py-12 sm:px-10 md:px-12 md:py-16 lg:grid-cols-2 lg:gap-16 lg:px-16">
+          <div className="max-w-xl">
+            <p className="text-sm font-semibold text-[var(--accent)]">Visitor Center</p>
 
-              {hero.subtitle && (
-                <p className="mt-4 text-base leading-relaxed text-gray-600 dark:text-gray-400">
-                  {hero.subtitle}
-                </p>
-              )}
+            {hero ? (
+              <>
+                <h1 className="mt-4 text-balance text-4xl font-bold leading-[1.08] tracking-tight text-slate-950 dark:text-white sm:text-5xl xl:text-6xl">
+                  {hero.title}
+                </h1>
 
-              {showCta && (
-                <div className="mt-8">
-                  {hero.cta_url ? (
-                    <a
-                      href={hero.cta_url}
-                      className={ctaClass}
-                      style={{ backgroundColor: "var(--accent)" }}
-                    >
-                      {hero.cta_label}
-                    </a>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={onCtaClick}
-                      className={ctaClass}
-                      style={{ backgroundColor: "var(--accent)" }}
-                    >
-                      {hero.cta_label}
-                    </button>
-                  )}
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="animate-pulse space-y-4" aria-hidden="true">
-              <div className="h-9 w-4/5 rounded-lg bg-gray-200 dark:bg-gray-800" />
-              <div className="h-9 w-3/5 rounded-lg bg-gray-200 dark:bg-gray-800" />
-              <div className="h-4 w-full rounded bg-gray-200 dark:bg-gray-800" />
-              <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-gray-800" />
-            </div>
-          )}
-        </div>
+                {hero.subtitle && (
+                  <p className="mt-5 text-base leading-7 text-slate-600 dark:text-slate-300 sm:text-lg sm:leading-8">
+                    {hero.subtitle}
+                  </p>
+                )}
 
-        {/* Image mosaic */}
-        <div className="relative mx-auto w-full max-w-md md:max-w-none">
-          <div className="grid grid-cols-5 grid-rows-2 gap-3 md:gap-4">
-            <div className="relative col-span-3 row-span-2">
-              {/* offset accent frame */}
-              <div
-                className="absolute inset-0 translate-x-2 translate-y-2 rounded-[2rem] border-2 opacity-70"
-                style={{ borderColor: "var(--accent)" }}
-                aria-hidden="true"
-              />
-              <Frame image={main} index={0} className="relative h-full min-h-[18rem] rounded-[2rem]" />
-            </div>
-            <Frame image={topSide} index={1} className="col-span-2 aspect-square rounded-2xl" />
-            <Frame image={bottomSide} index={2} className="col-span-2 aspect-square rounded-full" />
+                {showCta && (
+                  <div className="mt-8">
+                    <Cta label={hero.cta_label} url={hero.cta_url} onClick={onCtaClick} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="mt-6 animate-pulse space-y-4" aria-hidden="true">
+                <div className="h-12 w-4/5 rounded-lg bg-slate-200 dark:bg-slate-800" />
+                <div className="h-12 w-3/5 rounded-lg bg-slate-200 dark:bg-slate-800" />
+                <div className="mt-6 h-4 w-full rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="h-4 w-2/3 rounded bg-slate-200 dark:bg-slate-800" />
+                <div className="mt-7 h-12 w-40 rounded-xl bg-slate-200 dark:bg-slate-800" />
+              </div>
+            )}
+          </div>
+
+          <div className="relative mx-auto w-full max-w-xl lg:max-w-none">
+            <TropicalBlotches />
+            <HeroImage image={main} />
           </div>
         </div>
-      </div>
+
+        <ArticleCarousel />
+      </section>
 
       <style>{`
         @keyframes heroReveal {
@@ -174,7 +172,6 @@ export default function Dashboard({ onCtaClick }) {
           to { opacity: 1; transform: scale(1); }
         }
       `}</style>
-    </section>
+    </>
   );
 }
-

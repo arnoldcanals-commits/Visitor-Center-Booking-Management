@@ -14,3 +14,4 @@ from .admin_dashboard_view import *
 from .admin_user_viewset import *
 from .admin_user_viewset import *
 from .admin_package_views import *
+from .article_views import *

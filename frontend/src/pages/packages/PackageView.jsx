@@ -7,6 +7,7 @@ import PackageDetailContent from "../../components/packages/PackageDetailContent
 import PackageCarousel from "../../components/packages/PackageCarouel";
 import api from "../../api";
 import { setIfChanged, useLiveRefresh } from "../../hooks/useLiveRefresh";
+import { getAuthToken } from "../../utils/authTokens";
 
 export default function PackageDetail() {
   const { id: selectedPackageId } = useParams();
@@ -19,12 +20,12 @@ export default function PackageDetail() {
   const [loadingPackages, setLoadingPackages] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("access");
+    const token = getAuthToken("access");
     setIsAuthenticated(!!token);
   }, []);
 
   const handleLoginSuccess = () => {
-    const token = localStorage.getItem("access");
+    const token = getAuthToken("access");
     setIsAuthenticated(!!token);
     setAuthPanelOpen(false);
   };

@@ -2,6 +2,12 @@ import React, { createContext, useState, useEffect, useRef } from "react";
 import api from "../api";
 import { jwtDecode } from "jwt-decode";
 import { showGlobalMessage } from "../utils/globalMessages";
+import {
+  clearAuthTokens,
+  getAuthToken,
+  storeAuthTokens,
+  updateAccessToken,
+} from "../utils/authTokens";
 
 export const AuthContext = createContext();
 
@@ -37,8 +43,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setAuthTokens(null);
     setUser(null);
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    clearAuthTokens();
     applyTheme(); // reset to default accent/light mode
   };
 
@@ -62,7 +67,8 @@ export const AuthProvider = ({ children }) => {
   // ================= LOGIN =================
   const login = async (credentials) => {
     try {
-      const response = await api.post("api/staff/token/", credentials);
+      const { rememberMe = false, ...loginCredentials } = credentials;
+      const response = await api.post("api/staff/token/", loginCredentials);
       const data = response.data;
 
       if (!STAFF_ROLES.includes(data.role)) {
@@ -74,8 +80,7 @@ export const AuthProvider = ({ children }) => {
       setAuthTokens(tokens);
       setUser({ ...jwtDecode(data.access), ...data });
 
-      localStorage.setItem("access", data.access);
-      localStorage.setItem("refresh", data.refresh);
+      storeAuthTokens(data.access, data.refresh, rememberMe);
 
       await fetchProfile(tokens);
 
@@ -106,7 +111,7 @@ export const AuthProvider = ({ children }) => {
       const newTokens = { access: data.access, refresh: tokens.refresh };
       setAuthTokens(newTokens);
       setUser((prev) => ({ ...prev, ...decoded }));
-      localStorage.setItem("access", data.access);
+      updateAccessToken(data.access);
 
       isRefreshing.current = false;
       return true;
@@ -151,8 +156,8 @@ export const AuthProvider = ({ children }) => {
   // ================= INITIAL VALIDATION (runs once on mount) =================
   useEffect(() => {
     const init = async () => {
-      const access = localStorage.getItem("access");
-      const refresh = localStorage.getItem("refresh");
+      const access = getAuthToken("access");
+      const refresh = getAuthToken("refresh");
 
       // A: not logged in at all
       if (!access || !refresh) {
@@ -186,7 +191,7 @@ export const AuthProvider = ({ children }) => {
       // calls logout() for us.
       const ok = await refreshAccessToken(tokens);
       if (ok) {
-        await fetchProfile({ access: localStorage.getItem("access"), refresh });
+        await fetchProfile({ access: getAuthToken("access"), refresh });
       }
       setLoading(false);
     };

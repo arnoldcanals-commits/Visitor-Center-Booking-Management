@@ -25,6 +25,7 @@ from .models import (
     Review,
     EventStation,
     Information,
+    Article,
     EventStationCheck,
     EventStationGuestCheck,
     EventStationGuideCheck,
@@ -295,3 +296,11 @@ class DashboardImageInline(admin.TabularInline):
 class DashboardHeroAdmin(admin.ModelAdmin):
     list_display = ("title", "is_active", "updated_at")
     inlines = [DashboardImageInline]
+
+
+@admin.register(Article)
+class ArticleAdmin(admin.ModelAdmin):
+    list_display = ("title", "slug", "is_active", "published_at", "updated_at")
+    list_filter = ("is_active", "is_archived")
+    search_fields = ("title", "summary")
+    readonly_fields = ("slug", "published_at", "created_at", "updated_at")

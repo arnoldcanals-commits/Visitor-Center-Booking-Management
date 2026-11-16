@@ -10,6 +10,7 @@ import LoadingIndicator from "./LoadingIndicator";
 function Form({ onSubmit }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -17,7 +18,7 @@ function Form({ onSubmit }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await onSubmit({ email, password });
+      await onSubmit({ email, password, rememberMe });
     } finally {
       setLoading(false);
     }
@@ -91,6 +92,16 @@ function Form({ onSubmit }) {
           {showPassword ? "Hide" : "Show"}
         </button>
       </div>
+
+      <label className="mb-2 flex w-full items-center gap-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+        />
+        Remember me
+      </label>
 
       {/* Loading */}
       {loading && (

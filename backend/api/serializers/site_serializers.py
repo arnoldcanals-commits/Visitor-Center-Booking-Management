@@ -1,6 +1,7 @@
+import json
+
 from rest_framework import serializers
-from ..models import SiteConfiguration, FAQ
-from rest_framework.permissions import AllowAny
+from ..models import Article, SiteConfiguration, FAQ
 
 class SiteConfigurationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -21,6 +22,58 @@ class FAQSerializer(serializers.ModelSerializer):
     class Meta:
         model = FAQ
         fields = ['id', 'question', 'answer', 'order']
+
+
+class ArticleSerializer(serializers.ModelSerializer):
+    cover_image = serializers.ImageField(read_only=True)
+
+    class Meta:
+        model = Article
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "summary",
+            "content",
+            "cover_image",
+            "cover_image_alt",
+            "published_at",
+        ]
+        read_only_fields = fields
+
+
+class ArticleAdminSerializer(serializers.ModelSerializer):
+    cover_image = serializers.ImageField(required=False, allow_null=True)
+
+    class Meta:
+        model = Article
+        fields = [
+            "id",
+            "title",
+            "slug",
+            "summary",
+            "content",
+            "cover_image",
+            "cover_image_alt",
+            "is_active",
+            "published_at",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "slug", "published_at", "created_at", "updated_at"]
+
+    def validate_content(self, value):
+        if isinstance(value, str):
+            try:
+                value = json.loads(value)
+            except (TypeError, ValueError):
+                raise serializers.ValidationError(
+                    "Article content must be valid JSON for a Tiptap document."
+                )
+
+        if not isinstance(value, dict) or value.get("type") != "doc":
+            raise serializers.ValidationError("Article content must be a Tiptap document.")
+        return value
 
 
 from rest_framework import serializers

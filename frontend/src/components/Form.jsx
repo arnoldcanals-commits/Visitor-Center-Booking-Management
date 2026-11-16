@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import api from "../api";
-import { ACCESS_TOKEN, REFRESH_TOKEN } from "../constants";
 import LoadingIndicator from "./LoadingIndicator";
+import { storeAuthTokens } from "../utils/authTokens";
+import { Link } from "react-router-dom";
 
 function Form({ route, method, onAuthSuccess }) {
     const [username, setUsername] = useState("");
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [password2, setPassword2] = useState("");
+    const [rememberMe, setRememberMe] = useState(false);
 
     const [showPassword, setShowPassword] = useState(false);
     const [showPassword2, setShowPassword2] = useState(false);
@@ -40,8 +42,7 @@ function Form({ route, method, onAuthSuccess }) {
 
             // ✅ LOGIN FLOW
             if (method === "login") {
-                localStorage.setItem(ACCESS_TOKEN, res.data.access);
-                localStorage.setItem(REFRESH_TOKEN, res.data.refresh);
+                storeAuthTokens(res.data.access, res.data.refresh, rememberMe);
 
                 if (onAuthSuccess) onAuthSuccess();
                 return;
@@ -134,12 +135,21 @@ function Form({ route, method, onAuthSuccess }) {
                     {/* 🔗 Forgot Password Hook */}
                     <div className="w-11/12 text-right text-sm mt-1">
                         
-                         <a   href="/forgot-password"
+                         <Link to="/forgot-password"
                             className="text-blue-600 transition-colors duration-150 hover:text-blue-800 hover:underline"
                         >
                             Forgot password?
-                        </a>
+                        </Link>
                     </div>
+                    <label className="w-11/12 flex items-center gap-2 mt-3 text-sm text-gray-700">
+                        <input
+                            type="checkbox"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        Remember me
+                    </label>
                 </>
             )}
 

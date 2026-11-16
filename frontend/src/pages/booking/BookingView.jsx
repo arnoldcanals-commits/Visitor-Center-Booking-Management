@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import api from "../../api";
-import { ACCESS_TOKEN } from "../../constants";
+import { getAuthToken } from "../../utils/authTokens";
 import BookingCard from "../../components/booking/BookingCard";
 import TopBar from "../../components/TopBar";
 import LoadingIndicator from "../../components/LoadingIndicator";
@@ -8,7 +8,7 @@ import { CheckCircle2, Calendar, Clock, Palmtree } from "lucide-react";
 import { setIfChanged, useLiveRefresh } from "../../hooks/useLiveRefresh";
 
 const isLoggedIn = () => {
-  const token = localStorage.getItem(ACCESS_TOKEN);
+  const token = getAuthToken("access");
   return !!token && token !== "null" && token !== "undefined";
 };
 

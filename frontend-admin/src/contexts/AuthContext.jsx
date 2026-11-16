@@ -2,6 +2,12 @@ import React, { createContext, useState, useEffect, useRef, useCallback, useMemo
 import api from "../api";
 import { jwtDecode } from "jwt-decode";
 import { showGlobalMessage } from "../utils/globalMessages";
+import {
+  clearAuthTokens,
+  getAuthToken,
+  storeAuthTokens,
+  updateAccessToken,
+} from "../utils/authTokens";
 
 export const AuthContext = createContext();
 
@@ -9,21 +15,12 @@ const DEFAULT_ACCENT = "#8b5cf6";
 
 export const AuthProvider = ({ children }) => {
   const [authTokens, setAuthTokens] = useState(() => {
-    const access = localStorage.getItem("access");
-    const refresh = localStorage.getItem("refresh");
+    const access = getAuthToken("access");
+    const refresh = getAuthToken("refresh");
     return access && refresh ? { access, refresh } : null;
   });
 
-  const [user, setUser] = useState(() => {
-    try {
-      if (localStorage.getItem("access")) {
-        return jwtDecode(localStorage.getItem("access"));
-      }
-    } catch (e) {
-      return null;
-    }
-    return null;
-  });
+  const [user, setUser] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const isRefreshing = useRef(false);
@@ -78,7 +75,8 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (credentials) => {
     try {
-      const response = await api.post("api/site_admin/token/", credentials);
+      const { rememberMe = false, ...loginCredentials } = credentials;
+      const response = await api.post("api/site_admin/token/", loginCredentials);
       const data = response.data;
       const decoded = jwtDecode(data.access);
 
@@ -91,8 +89,7 @@ export const AuthProvider = ({ children }) => {
       setAuthTokens(tokens);
       setUser(decoded);
 
-      localStorage.setItem("access", data.access);
-      localStorage.setItem("refresh", data.refresh);
+      storeAuthTokens(data.access, data.refresh, rememberMe);
 
       await fetchProfile(tokens);
 
@@ -106,27 +103,27 @@ export const AuthProvider = ({ children }) => {
   const logout = useCallback(() => {
     setAuthTokens(null);
     setUser(null);
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    clearAuthTokens();
     applyTheme();
   }, [applyTheme]);
 
-  const refreshAccessToken = useCallback(async () => {
-    if (!authTokens?.refresh || isRefreshing.current) return false;
+  const refreshAccessToken = useCallback(async (tokensOverride) => {
+    const tokens = tokensOverride || authTokens;
+    if (!tokens?.refresh || isRefreshing.current) return false;
 
     try {
       isRefreshing.current = true;
 
       const response = await api.post("api/site_admin/token/refresh/", {
-        refresh: authTokens.refresh,
+        refresh: tokens.refresh,
       });
 
       const data = response.data;
-      const newTokens = { ...authTokens, access: data.access };
+      const newTokens = { ...tokens, access: data.access };
       setAuthTokens(newTokens);
       setUser((prev) => ({ ...prev, ...jwtDecode(data.access) }));
 
-      localStorage.setItem("access", data.access);
+      updateAccessToken(data.access);
 
       isRefreshing.current = false;
       return true;
@@ -139,31 +136,53 @@ export const AuthProvider = ({ children }) => {
   }, [authTokens, logout]);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (!authTokens) return;
+    let active = true;
+    const initializeAuth = async () => {
+      if (!authTokens) {
+        applyTheme();
+        setLoading(false);
+        return;
+      }
+
       try {
-        const decoded = jwtDecode(authTokens.access);
-        const now = Date.now() / 1000;
-        if (decoded.exp - now < 60) {
+        let tokens = authTokens;
+        const decoded = jwtDecode(tokens.access);
+        if (decoded.exp <= Date.now() / 1000) {
+          const refreshed = await refreshAccessToken(tokens);
+          if (!refreshed) return;
+          tokens = { ...tokens, access: getAuthToken("access") };
+        }
+        setAuthTokens(tokens);
+        setUser(jwtDecode(tokens.access));
+        await fetchProfile(tokens);
+      } catch {
+        logout();
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    initializeAuth();
+    return () => {
+      active = false;
+    };
+    // Initialize only from the stored tokens; refreshAccessToken updates state itself.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!authTokens?.access) return;
+    const interval = setInterval(() => {
+      try {
+        if (jwtDecode(authTokens.access).exp - Date.now() / 1000 < 60) {
           refreshAccessToken();
         }
-      } catch (e) {
+      } catch {
         logout();
       }
     }, 30000);
-
-    setLoading(false);
     return () => clearInterval(interval);
   }, [authTokens, refreshAccessToken, logout]);
-
-  useEffect(() => {
-    if (authTokens?.access) {
-      fetchProfile(authTokens);
-    } else {
-      applyTheme();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const value = useMemo(
   () => ({ user, authTokens, authLoading: loading, login, logout, refreshAccessToken, fetchProfile, updateDarkMode, updateThemeColor }),

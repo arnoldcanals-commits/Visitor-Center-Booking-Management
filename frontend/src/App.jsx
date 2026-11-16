@@ -31,24 +31,27 @@ import Sidebar from "./components/Sidebar";
 import { SidebarContext } from "./components/SidebarContext";
 
 import VerifyEmail from "./pages/Verify";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
+import ArticleDetail from "./pages/ArticleDetail";
 import AuthProvider, { AuthContext } from "./components/Auth";
+import { clearAuthTokens, getAuthToken } from "./utils/authTokens";
 
 function Logout() {
   useEffect(() => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    clearAuthTokens();
   }, []);
   return <Navigate to="/" replace />;
 }
 
 function RegisterAndLogout() {
-  localStorage.clear();
+  clearAuthTokens();
   return <Register />;
 }
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(
-    !!localStorage.getItem("access")
+    !!getAuthToken("access")
   );
   const [authPanelOpen, setAuthPanelOpen] = useState(false);
   const [authMode, setAuthMode] = useState("login");
@@ -64,7 +67,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <SidebarContext.Provider value={{ sidebarCollapsed, setSidebarCollapsed }}>
-          <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-900">
+          <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-slate-900">
             {/* Column 1: sidebar */}
             <Sidebar collapsed={sidebarCollapsed} />
 
@@ -110,6 +113,9 @@ function App() {
                 <Route path="/information" element={<InformationView />} />
                 <Route path="/register" element={<RegisterAndLogout />} />
                 <Route path="/verify-email" element={<VerifyEmail />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/articles/:slug" element={<ArticleDetail />} />
                 <Route path="/logout" element={<Logout />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
                 <Route path="/search" element={<SearchPage />} />

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../api';
 import { Bell, BellDot, CheckCheck, Info, Calendar, FileText, AlertCircle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AuthContext } from './Auth';
+import { getAuthToken } from "../utils/authTokens";
 // itemsPerPage is now a prop so any parent can control the page size,
 // but it still defaults to 5 if nothing is passed in.
 const NotificationBell = ({ itemsPerPage: initialItemsPerPage = 5, pageSizeOptions = [5, 10, 20] }) => {
@@ -40,7 +41,7 @@ const NotificationBell = ({ itemsPerPage: initialItemsPerPage = 5, pageSizeOptio
   );
 
   const fetchNotifications = async () => {
-    if (!localStorage.getItem('access')) return;
+    if (!getAuthToken("access")) return;
     try {
       const res = await api.get('/api/notifications/');
       const countRes = await api.get('/api/notifications/unread_count/');

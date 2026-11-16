@@ -10,6 +10,7 @@ function Form({ onAuthSuccess }) {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -35,7 +36,7 @@ function Form({ onAuthSuccess }) {
   setLoading(true);
 
   try {
-    const user = await login({ email, password });
+    const user = await login({ email, password, rememberMe });
 
     if (!user) {
       showGlobalMessage("Invalid credentials or unauthorized account.", "error");
@@ -125,6 +126,16 @@ function Form({ onAuthSuccess }) {
           {showPassword ? "Hide" : "Show"}
         </button>
       </div>
+
+      <label className="mb-2 flex w-full items-center gap-2 text-sm text-gray-600">
+        <input
+          type="checkbox"
+          checked={rememberMe}
+          onChange={(e) => setRememberMe(e.target.checked)}
+          className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+        />
+        Remember me
+      </label>
 
       {/* Loading */}
       {loading && (

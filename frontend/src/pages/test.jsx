@@ -4,7 +4,7 @@ import AuthPanel from "../components/AuthPanel";
 import LogoutButton from "../components/LogoutButton";
 import PackageList from "../components/PackageList";
 import TopBar from "../components/TopBar";
-import { ACCESS_TOKEN } from "../constants";
+import { getAuthToken } from "../utils/authTokens";
 import "../styles/Home.css";
 
 export default function Home() {
@@ -16,7 +16,7 @@ export default function Home() {
 
   // ✅ Check for an existing token on mount
   useEffect(() => {
-    const token = localStorage.getItem(ACCESS_TOKEN);
+    const token = getAuthToken("access");
 
     if (!token) {
       setAuth(false);
@@ -31,7 +31,7 @@ export default function Home() {
   useEffect(() => {
     if (!auth) return;
 
-    const token = localStorage.getItem(ACCESS_TOKEN);
+    const token = getAuthToken("access");
 
     fetch("/api/home/", {
       headers: {

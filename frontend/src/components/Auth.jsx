@@ -1,5 +1,9 @@
 import React, { createContext, useState, useEffect } from "react";
 import api from "../api";
+import {
+  clearAuthTokens,
+  getAuthToken,
+} from "../utils/authTokens";
 
 export const AuthContext = createContext();
 
@@ -13,14 +17,14 @@ const applyTheme = ({ themeColor, darkMode } = {}) => {
 export default function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(
-    !!localStorage.getItem("access")
+    !!getAuthToken("access")
   );
   const [theme, setTheme] = useState({ darkMode: false, themeColor: DEFAULT_ACCENT });
   const [loading, setLoading] = useState(true);
 
   // --- Fetch user (auth) ---
   const fetchUser = async () => {
-    const access = localStorage.getItem("access");
+    const access = getAuthToken("access");
     if (!access) {
       setIsAuthenticated(false);
       setUser(null);
@@ -38,7 +42,7 @@ export default function AuthProvider({ children }) {
 
   // --- Fetch profile (theme prefs) ---
   const fetchTheme = async () => {
-    const access = localStorage.getItem("access");
+    const access = getAuthToken("access");
     if (!access) {
       applyTheme(); // not logged in — defaults
       return;
@@ -79,8 +83,7 @@ export default function AuthProvider({ children }) {
 
   // --- Logout ---
   const logout = () => {
-    localStorage.removeItem("access");
-    localStorage.removeItem("refresh");
+    clearAuthTokens();
     setUser(null);
     setIsAuthenticated(false);
     setTheme({ darkMode: false, themeColor: DEFAULT_ACCENT });

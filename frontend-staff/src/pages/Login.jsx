@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Form from "../components/Form";
 import { AuthContext } from "../contexts/AuthContext";
 import { showGlobalMessage } from "../utils/globalMessages";
+import { clearAuthTokens, getAuthToken } from "../utils/authTokens";
 
 function Login() {
   const { login } = useContext(AuthContext);
@@ -14,15 +15,14 @@ function Login() {
 
     if (success) {
       // Decode token to check if user is admin
-      const access = localStorage.getItem("access");
+      const access = getAuthToken("access");
       const tokenData = access ? JSON.parse(atob(access.split(".")[1])) : null;
 
       if (tokenData?.is_admin) {
         navigate("/dashboard", { replace: true });
       } else {
         showGlobalMessage("Only admin users can log in.", "error");
-        localStorage.removeItem("access");
-        localStorage.removeItem("refresh");
+        clearAuthTokens();
       }
     } else {
       showGlobalMessage("Login failed. Check your credentials.", "error");
